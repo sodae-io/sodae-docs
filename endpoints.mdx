@@ -1,0 +1,41 @@
+---
+title: "Endpoints"
+description: "Hostnames, ports and protocols."
+---
+
+## Amsterdam
+
+| Service | URL | Protocol |
+|---|---|---|
+| RPC | `http://ams.rpc.sodae.io:8899` | JSON-RPC 2.0, HTTP `POST` |
+| Yellowstone gRPC | `http://ams.rpc.sodae.io:10201` | gRPC over HTTP/2 |
+| Preplay Shreds | `http://ams.rpc.sodae.io:10301` | gRPC over HTTP/2 |
+
+The gRPC ports speak plaintext HTTP/2. Configure your client for an insecure (non-TLS) channel:
+
+<CodeGroup>
+
+```rust Rust
+GeyserGrpcClient::build_from_shared("http://ams.rpc.sodae.io:10201")?
+```
+
+```typescript TypeScript
+new Client("http://ams.rpc.sodae.io:10201", token, {});
+```
+
+```go Go
+grpc.NewClient("ams.rpc.sodae.io:10201",
+    grpc.WithTransportCredentials(insecure.NewCredentials()))
+```
+
+</CodeGroup>
+
+[Price Feeds](/price-feeds) and [SodaStream](/sodastream) deliver to your server rather than through a public endpoint.
+
+## Choosing a location
+
+Place your servers in or near Amsterdam for the lowest latency. The endpoints are the same for every plan; what you can use depends on your plan and bound IPs.
+
+## WebSocket
+
+RPC does not offer WebSocket subscriptions. For real-time data, use [Yellowstone gRPC](/yellowstone/overview), which covers account, transaction and slot updates with server-side filtering.

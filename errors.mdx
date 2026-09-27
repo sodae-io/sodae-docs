@@ -1,0 +1,68 @@
+---
+title: "Errors"
+description: "Error codes from the gRPC and RPC endpoints, and when to retry."
+---
+
+## gRPC
+
+When a gRPC stream is refused or ended by the service, the response carries:
+
+- a gRPC status code,
+- an `x-error-code` header or trailer with one of the codes below,
+- a status message ending in `(code: …)` with the same code.
+
+| Code | gRPC status | Meaning | What to do |
+|---|---|---|---|
+| `UNAUTHENTICATED` | 16 `UNAUTHENTICATED` | The key is missing, invalid, expired or revoked, or the key's access rules block this address | Fix the key or its rules. Do not retry |
+| `NOT_ENTITLED` | 7 `PERMISSION_DENIED` | The account has no active plan or trial for this product | Buy a plan or request a trial |
+| `IP_NOT_ALLOWED` | 7 `PERMISSION_DENIED` | This source IP is not bound to a plan for this product | Bind the IP under **Plans → Allowed IPs** |
+| `QUOTA_EXCEEDED` | 8 `RESOURCE_EXHAUSTED` | The plan's data allowance is used up | Buy more data or a fixed-price plan |
+| `AUTH_RATE_LIMITED` | 8 `RESOURCE_EXHAUSTED` | Too many failed authentication attempts from this address | Fix the key, then retry later |
+| `AUTH_BUSY` | 14 `UNAVAILABLE` | Authentication is shedding load | Retry with backoff |
+| `AUTH_UNAVAILABLE` | 13 `INTERNAL` | Credentials could not be checked right now | Retry with backoff |
+| `NO_CAPACITY` | 14 `UNAVAILABLE` | No capacity is free to serve the stream right now | Retry with backoff |
+| `UPSTREAMS_UNAVAILABLE` | 14 `UNAVAILABLE` | The service is temporarily unavailable | Retry with backoff |
+| `UPSTREAM_ERROR` | 14 `UNAVAILABLE` | The request did not complete | Retry with backoff |
+| `INVALID_CONTENT_TYPE` | 3 `INVALID_ARGUMENT` | The request was not gRPC | Use a gRPC client |
+
+`UNAUTHENTICATED`, `NOT_ENTITLED`, `IP_NOT_ALLOWED` and `QUOTA_EXCEEDED` also end streams that are already open. Revoking a key, a plan expiring, removing an IP or running out of data ends a running stream within about 30 seconds, with the matching code.
+
+### Reading the code
+
+<CodeGroup>
+
+```rust Rust
+let code = status.metadata().get("x-error-code").and_then(|v| v.to_str().ok());
+```
+
+```typescript TypeScript
+const code = /\(code: ([A-Z_]+)\)/.exec(error.message)?.[1];
+```
+
+```go Go
+code := stream.Trailer().Get("x-error-code")
+```
+
+</CodeGroup>
+
+## RPC
+
+Errors raised by the RPC service itself use HTTP status codes and a JSON-RPC error body:
+
+```json
+{ "jsonrpc": "2.0", "error": { "code": -401, "message": "Unauthorized. Invalid or expired API key." }, "id": null }
+```
+
+| HTTP | Code | Message | What to do |
+|---|---|---|---|
+| 401 | `-401` | `Unauthorized. API key required. …` | Send your key |
+| 401 | `-401` | `Unauthorized. Invalid or expired API key.` | Check the key, its access rules and that you have an RPC plan or trial |
+| 402 | `-402` | `The request allowance for the current window has been reached …` | Your trial credits are used up. Buy an RPC plan |
+| 429 | `-429` | `Too Many Requests. Rate limit exceeded for your plan.` | Slow down, or raise your plan's request rate |
+| 429 | `-429` | `Too Many Requests` | Back off and retry |
+| 502 | `-502` | `Bad Gateway` | Retry |
+| 503 | `-503` | `Service Unavailable` | Retry with backoff |
+| 504 | `-504` | `Gateway Timeout` | Retry, or narrow the request |
+| 405 | | `Method not allowed` | Use `POST` |
+
+Errors about the request itself, such as invalid parameters or an unknown method, come back as standard Solana JSON-RPC errors with HTTP 200.

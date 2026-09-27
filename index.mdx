@@ -1,0 +1,51 @@
+---
+title: "Introduction"
+description: "Solana RPC, Yellowstone gRPC streams and decoded shreds, served from Amsterdam."
+---
+
+Sodae serves Solana data from bare metal in Amsterdam. One API key works across every product; each product needs its own plan or trial.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create an account, get a key and make your first request.
+  </Card>
+  <Card title="Pricing" icon="tag" href="/pricing">
+    Plans, data packs, trials and payment.
+  </Card>
+  <Card title="RPC" icon="server" href="/rpc/overview">
+    JSON-RPC with full history and the Digital Asset Standard API.
+  </Card>
+  <Card title="Yellowstone gRPC" icon="water" href="/yellowstone/overview">
+    Stream accounts, transactions, slots, block meta and entries.
+  </Card>
+  <Card title="Preplay Shreds" icon="bolt" href="/preplay/overview">
+    Entries decoded from shreds before the block is complete.
+  </Card>
+  <Card title="Price Feeds" icon="chart-line" href="/price-feeds">
+    Every transaction decoded into price updates.
+  </Card>
+  <Card title="SodaStream" icon="tower-broadcast" href="/sodastream">
+    Raw shreds forwarded to your server. Coming soon.
+  </Card>
+  <Card title="Errors" icon="triangle-exclamation" href="/errors">
+    Every error code, what it means and whether to retry.
+  </Card>
+</CardGroup>
+
+## Products
+
+| Product | Delivery | Use it for |
+|---|---|---|
+| [RPC](/rpc/overview) | JSON-RPC 2.0 over HTTP | Reads, history, sending transactions, digital assets |
+| [Yellowstone gRPC](/yellowstone/overview) | gRPC (Yellowstone Geyser) | Filtered real-time streams of accounts, transactions and slots |
+| [Preplay Shreds](/preplay/overview) | gRPC (`SubscribeEntries`) | Every transaction a leader produces, as soon as its shreds arrive |
+| [Price Feeds](/price-feeds) | Feed to your server | Price updates from every swap and oracle update |
+| [SodaStream](/sodastream) (coming soon) | Shreds pushed to your IP and port | Raw shreds for validators and trading infrastructure |
+
+## Example code
+
+Complete, runnable clients in Rust, TypeScript and Go are in [`sodae-io/sodae-docs/examples`](https://github.com/sodae-io/sodae-docs/tree/main/examples). Each one reconnects with backoff, answers keepalive pings and prints the error code when the server refuses a stream.
+
+```bash
+git clone https://github.com/sodae-io/sodae-docs
+```

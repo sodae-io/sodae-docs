@@ -1,0 +1,81 @@
+---
+title: "Authentication"
+description: "API keys, how to send them, and which IPs can connect."
+---
+
+## API keys
+
+Every request carries an API key. Keys look like `XXXXXXX-XXXXXXX-XXXXXX` and work across all products your account has access to. Treat them like passwords.
+
+Manage keys under **API Keys** in the dashboard:
+
+- **Create new** adds a key.
+- **Regenerate** replaces a key. The old value stops working immediately.
+- **Revoke** disables a key for good.
+
+## Sending the key
+
+<Tabs>
+  <Tab title="gRPC">
+    Send the key as `x-token` request metadata.
+
+    ```rust
+    GeyserGrpcClient::build_from_shared(endpoint)?
+        .x_token(Some(token))?
+    ```
+
+    ```typescript
+    new Client(endpoint, token, {});
+    ```
+
+    ```go
+    ctx := metadata.AppendToOutgoingContext(ctx, "x-token", token)
+    ```
+  </Tab>
+  <Tab title="RPC">
+    Use any one of these:
+
+    | Method | Example |
+    |---|---|
+    | `x-token` header | `x-token: <key>` |
+    | Bearer token | `Authorization: Bearer <key>` |
+    | Query parameter | `http://ams.rpc.sodae.io:8899/?api-key=<key>` |
+
+    The dashboard shows endpoint URLs with `?api-key=` already appended. Prefer a header in production so the key stays out of logs and proxies.
+  </Tab>
+</Tabs>
+
+## Plan IPs
+
+Plans decide which source IPs can use them.
+
+| Plan type | IPs | Before an IP is set |
+|---|---|---|
+| Fixed price (Shared seat, Binary Decoded Shreds) | 1 | No connections are accepted |
+| Per GB | Any number | Any IP can connect |
+| Trial | 1, the IP in your request | Set when the trial is approved |
+
+Manage IPs under **Plans → Allowed IPs** on each product page:
+
+- **Add** binds another IP, up to the plan's limit.
+- **Change** moves a bound IP to a new address.
+- **Remove** unbinds an IP.
+
+Changes apply within about a second. A stream that is open from an IP you remove ends with [`IP_NOT_ALLOWED`](/errors).
+
+<Note>
+Bind your server's public IP address as seen from the internet, not a private or internal address.
+</Note>
+
+## Key access rules
+
+Each key can carry its own rules under **Access control** on the product page:
+
+- **Allowed IPs** and **Allowed CIDRs** limit which addresses may use the key.
+- **Allowed Domains** checks the browser's `Origin` (or `Referer`) header, for keys used from web pages.
+
+With no rules set, the key works from any IP its plans allow.
+
+## Trials and pending plans
+
+A trial request asks for the IP it should be bound to. You can change that IP while the request is awaiting approval; after approval, change it on the plan instead.

@@ -1,0 +1,89 @@
+---
+title: "Methods"
+description: "Supported JSON-RPC methods and their credit costs."
+---
+
+Credit costs matter for trials, which spend from a fixed allowance. Paid plans have no credit limit.
+
+## Solana methods
+
+Parameters and results follow the [Solana JSON-RPC reference](https://solana.com/docs/rpc).
+
+| Method | Credits |
+|---|---|
+| `getAccountInfo` | 1 |
+| `getBalance` | 1 |
+| `getBlock` | 10 |
+| `getBlockCommitment` | 1 |
+| `getBlockHeight` | 1 |
+| `getBlockProduction` | 1 |
+| `getBlocks` | 10 |
+| `getBlocksWithLimit` | 10 |
+| `getBlockTime` | 10 |
+| `getClusterNodes` | 1 |
+| `getEpochInfo` | 1 |
+| `getEpochSchedule` | 1 |
+| `getFeeForMessage` | 1 |
+| `getFirstAvailableBlock` | 1 |
+| `getGenesisHash` | 1 |
+| `getHealth` | 1 |
+| `getHighestSnapshotSlot` | 1 |
+| `getIdentity` | 1 |
+| `getInflationGovernor` | 1 |
+| `getInflationRate` | 1 |
+| `getInflationReward` | 10 |
+| `getLatestBlockhash` | 1 |
+| `getLeaderSchedule` | 1 |
+| `getMaxRetransmitSlot` | 1 |
+| `getMaxShredInsertSlot` | 1 |
+| `getMinimumBalanceForRentExemption` | 1 |
+| `getMultipleAccounts` | 1 |
+| `getProgramAccounts` | 10 |
+| `getRecentPerformanceSamples` | 1 |
+| `getRecentPrioritizationFees` | 1 |
+| `getSignaturesForAddress` | 10 |
+| `getSignatureStatuses` | 10 |
+| `getSlot` | 1 |
+| `getSlotLeader` | 1 |
+| `getSlotLeaders` | 1 |
+| `getStakeMinimumDelegation` | 1 |
+| `getTokenAccountBalance` | 1 |
+| `getTokenAccountsByOwner` | 1 |
+| `getTokenLargestAccounts` | 10 |
+| `getTokenSupply` | 1 |
+| `getTransaction` | 10 |
+| `getTransactionCount` | 1 |
+| `getVersion` | 1 |
+| `getVoteAccounts` | 1 |
+| `isBlockhashValid` | 1 |
+| `minimumLedgerSlot` | 1 |
+| `sendTransaction` | 1 |
+| `simulateTransaction` | 1 |
+
+Not available: `getLargestAccounts`, `getSupply` and `getTokenAccountsByDelegate`.
+
+## Digital Asset Standard
+
+The [Metaplex DAS API](https://developers.metaplex.com/das-api) for NFTs, compressed NFTs and fungible tokens. Parameters are passed as a JSON object.
+
+| Method | Credits |
+|---|---|
+| `getAsset` | 10 |
+| `getAssets` | 10 |
+| `getAssetProof` | 10 |
+| `getAssetProofs` | 10 |
+| `getAssetsByAuthority` | 10 |
+| `getAssetsByCreator` | 10 |
+| `getAssetsByGroup` | 10 |
+| `getAssetsByOwner` | 10 |
+| `getAssetSignatures` | 10 |
+| `getNftEditions` | 10 |
+| `getTokenAccounts` | 10 |
+| `searchAssets` | 10 |
+
+```bash
+curl http://ams.rpc.sodae.io:8899 \
+  -H "x-token: $SODAE_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getAsset","params":{"id":"JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"}}'
+```

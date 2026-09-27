@@ -1,0 +1,175 @@
+---
+title: "Yellowstone examples"
+description: "Runnable Yellowstone gRPC clients in Rust, TypeScript and Go."
+---
+
+Each example streams one of three things, reconnects with backoff, answers pings, and exits with the server's error code when a stream is refused for a reason retrying will not fix.
+
+| Mode | Streams | Argument |
+|---|---|---|
+| `transactions` (default) | Successful non-vote transactions that touch a program | Program ids, default the Pump.fun AMM |
+| `accounts` | Writes to specific accounts | One or more pubkeys |
+| `slots` | Slot status changes | None |
+
+All three read `SODAE_TOKEN` and, optionally, `SODAE_YELLOWSTONE_URL`.
+
+## Run
+
+```bash
+git clone https://github.com/sodae-io/sodae-docs
+cd sodae-docs
+```
+
+<CodeGroup>
+
+```bash Rust
+cd examples/rust
+export SODAE_TOKEN=your-api-key
+cargo run --example yellowstone -- transactions
+cargo run --example yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
+cargo run --example yellowstone -- slots
+```
+
+```bash TypeScript
+cd examples/typescript
+npm install
+export SODAE_TOKEN=your-api-key
+npm run yellowstone -- transactions
+npm run yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
+npm run yellowstone -- slots
+```
+
+```bash Go
+cd examples/go
+export SODAE_TOKEN=your-api-key
+go run ./yellowstone transactions
+go run ./yellowstone accounts SysvarC1ock11111111111111111111111111111111
+go run ./yellowstone slots
+```
+
+</CodeGroup>
+
+Requirements: Rust 1.89 or later, Node.js 20.18 or later, Go 1.25 or later.
+
+## Output
+
+```text
+450626351 3EM9QxMdZvfXdWqnPGdzGpkvwJZPBFcJx3o8XMi5S6PYaKhcw2jZ6TUQSD94pdVi4JibuGmcBHYbPzysQafCoZEu
+450626380 SysvarC1ock11111111111111111111111111111111 lamports=1169280 data=40B owner=Sysvar1111111111111111111111111111111111111
+450626346 SLOT_CONFIRMED
+```
+
+## Core of each client
+
+<CodeGroup>
+
+```rust Rust
+let mut client = GeyserGrpcClient::build_from_shared(endpoint)?
+    .x_token(Some(token))?
+    .max_decoding_message_size(64 * 1024 * 1024)
+    .connect()
+    .await?;
+
+let request = SubscribeRequest {
+    transactions: HashMap::from([(
+        "transactions".to_string(),
+        SubscribeRequestFilterTransactions {
+            vote: Some(false),
+            failed: Some(false),
+            account_include: vec![program],
+            ..Default::default()
+        },
+    )]),
+    commitment: Some(CommitmentLevel::Processed as i32),
+    ..Default::default()
+};
+
+let (mut sink, mut updates) = client.subscribe_with_request(Some(request)).await?;
+while let Some(update) = updates.next().await {
+    match update?.update_oneof {
+        Some(UpdateOneof::Ping(_)) => {
+            sink.send(SubscribeRequest {
+                ping: Some(SubscribeRequestPing { id: 1 }),
+                ..Default::default()
+            })
+            .await?;
+        }
+        Some(UpdateOneof::Transaction(tx)) => {
+            let info = tx.transaction.unwrap();
+            println!("{} {}", tx.slot, bs58::encode(info.signature).into_string());
+        }
+        _ => {}
+    }
+}
+```
+
+```typescript TypeScript
+import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc";
+import bs58 from "bs58";
+
+const client = new Client(endpoint, token, { grpcMaxDecodingMessageSize: 64 * 1024 * 1024 });
+await client.connect();
+
+const empty = {
+  accounts: {}, slots: {}, transactions: {}, transactionsStatus: {},
+  blocks: {}, blocksMeta: {}, entry: {}, accountsDataSlice: [],
+};
+const stream = await client.subscribe({
+  ...empty,
+  transactions: {
+    transactions: {
+      vote: false,
+      failed: false,
+      accountInclude: [program],
+      accountExclude: [],
+      accountRequired: [],
+    },
+  },
+  commitment: CommitmentLevel.PROCESSED,
+});
+
+stream.on("data", (update) => {
+  if (update.ping) stream.write({ ...empty, ping: { id: 1 } });
+  else if (update.transaction?.transaction) {
+    console.log(update.transaction.slot, bs58.encode(update.transaction.transaction.signature));
+  }
+});
+```
+
+```go Go
+conn, err := grpc.NewClient("ams.rpc.sodae.io:10201",
+    grpc.WithTransportCredentials(insecure.NewCredentials()),
+    grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(64<<20)))
+ctx := metadata.AppendToOutgoingContext(context.Background(), "x-token", token)
+stream, err := pb.NewGeyserClient(conn).Subscribe(ctx)
+
+commitment := pb.CommitmentLevel_PROCESSED
+vote, failed := false, false
+err = stream.Send(&pb.SubscribeRequest{
+    Commitment: &commitment,
+    Transactions: map[string]*pb.SubscribeRequestFilterTransactions{
+        "transactions": {Vote: &vote, Failed: &failed, AccountInclude: []string{program}},
+    },
+})
+
+for {
+    update, err := stream.Recv()
+    if err != nil {
+        return err
+    }
+    switch u := update.UpdateOneof.(type) {
+    case *pb.SubscribeUpdate_Ping:
+        stream.Send(&pb.SubscribeRequest{Ping: &pb.SubscribeRequestPing{Id: 1}})
+    case *pb.SubscribeUpdate_Transaction:
+        fmt.Println(u.Transaction.Slot, base58.Encode(u.Transaction.Transaction.Signature))
+    }
+}
+```
+
+</CodeGroup>
+
+The complete programs, with reconnects and error handling:
+
+- [Rust: `examples/rust/examples/yellowstone.rs`](https://github.com/sodae-io/sodae-docs/blob/main/examples/rust/examples/yellowstone.rs)
+- [TypeScript: `examples/typescript/src/yellowstone.ts`](https://github.com/sodae-io/sodae-docs/blob/main/examples/typescript/src/yellowstone.ts)
+- [Go: `examples/go/yellowstone/main.go`](https://github.com/sodae-io/sodae-docs/blob/main/examples/go/yellowstone/main.go)

@@ -1,0 +1,25 @@
+[package]
+name = "sodae-examples"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+publish = false
+
+[dependencies]
+anyhow = "1"
+bs58 = "0.5"
+futures = "0.3"
+prost = "0.14"
+solana-hash = { version = "4", features = ["wincode"] }
+solana-pubkey = "4"
+solana-transaction = { version = "5", features = ["wincode"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tonic = { version = "0.14", features = ["tls-native-roots"] }
+tonic-prost = "0.14"
+wincode = { version = "0.6", features = ["derive"] }
+yellowstone-grpc-client = "14"
+yellowstone-grpc-proto = "14"
+
+[build-dependencies]
+protox = "0.9"
+tonic-prost-build = "0.14"

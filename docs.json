@@ -1,0 +1,70 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Sodae",
+  "description": "Solana RPC, Yellowstone gRPC and decoded shreds from Amsterdam.",
+  "colors": {
+    "primary": "#08a38d",
+    "light": "#24dfc4",
+    "dark": "#08a38d"
+  },
+  "favicon": "/favicon.ico",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://sodae.io"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "https://discord.gg/GyrqUMBr7X"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://sodae.io/dashboard"
+    }
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": ["index", "quickstart", "authentication", "endpoints"]
+      },
+      {
+        "group": "Plans",
+        "pages": ["pricing"]
+      },
+      {
+        "group": "RPC",
+        "pages": ["rpc/overview", "rpc/methods"]
+      },
+      {
+        "group": "Yellowstone gRPC",
+        "pages": ["yellowstone/overview", "yellowstone/examples"]
+      },
+      {
+        "group": "Preplay Shreds",
+        "pages": ["preplay/overview", "preplay/decoding", "preplay/examples"]
+      },
+      {
+        "group": "More products",
+        "pages": ["price-feeds", "sodastream"]
+      },
+      {
+        "group": "Reference",
+        "pages": ["errors", "support"]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/sodaeio",
+      "github": "https://github.com/sodae-io",
+      "discord": "https://discord.gg/GyrqUMBr7X",
+      "telegram": "https://t.me/sodaeio"
+    }
+  }
+}

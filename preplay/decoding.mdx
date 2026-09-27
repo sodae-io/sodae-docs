@@ -1,0 +1,140 @@
+---
+title: "Decoding entries"
+description: "The byte layout of the entries field and libraries that decode it."
+---
+
+The `entries` field is a list of Solana ledger entries in the validator's own encoding, the same encoding as Agave's `solana_entry::entry::Entry`. Integers are little-endian.
+
+## Use a library
+
+<Tabs>
+  <Tab title="Rust">
+    Decode with [`wincode`](https://crates.io/crates/wincode) and `solana-transaction` 5 or later:
+
+    ```rust
+    use solana_hash::Hash;
+    use solana_transaction::versioned::VersionedTransaction;
+    use wincode::{SchemaRead, containers, len::BincodeLen};
+
+    #[derive(SchemaRead)]
+    struct Entry {
+        num_hashes: u64,
+        hash: Hash,
+        #[wincode(with = "containers::Vec<VersionedTransaction, BincodeLen>")]
+        transactions: Vec<VersionedTransaction>,
+    }
+
+    let entries: Vec<Entry> = wincode::deserialize(&message.entries)?;
+    ```
+
+    ```toml
+    solana-hash = { version = "4", features = ["wincode"] }
+    solana-transaction = { version = "5", features = ["wincode"] }
+    wincode = { version = "0.6", features = ["derive"] }
+    ```
+  </Tab>
+  <Tab title="Go">
+    Read the entry framing with [`gagliardetto/binary`](https://github.com/gagliardetto/binary) and each transaction with [`solana-go`](https://github.com/gagliardetto/solana-go) v1.24 or later, which reads legacy, v0 and v1 transactions:
+
+    ```go
+    decoder := bin.NewBinDecoder(message.Entries)
+    count, _ := decoder.ReadUint64(binary.LittleEndian)
+    for range count {
+        numHashes, _ := decoder.ReadUint64(binary.LittleEndian)
+        hash, _ := decoder.ReadNBytes(32)
+        txCount, _ := decoder.ReadUint64(binary.LittleEndian)
+        for range txCount {
+            var tx solana.Transaction
+            if err := tx.UnmarshalWithDecoder(decoder); err != nil {
+                return err
+            }
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="TypeScript">
+    [`examples/typescript/src/entries.ts`](https://github.com/sodae-io/sodae-docs/blob/main/examples/typescript/src/entries.ts) is a self-contained decoder with one dependency (`bs58`). It returns signatures, header, account keys, blockhash, instructions, lookup tables and, for v1, the transaction config.
+
+    ```typescript
+    import { decodeEntries } from "./entries.js";
+
+    for (const entry of decodeEntries(message.entries)) {
+      for (const tx of entry.transactions) {
+        console.log(tx.signatures[0], tx.version, tx.accountKeys[0]);
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Layout
+
+```text
+u64                    entry count
+entry × count:
+  u64                  num_hashes
+  [u8; 32]             hash
+  u64                  transaction count
+  transaction × count
+```
+
+A transaction's first byte tells its format: `0x81` starts a v1 transaction; anything else is the signature count of a legacy or v0 transaction.
+
+### Legacy and v0 transactions
+
+```text
+compact-u16            signature count
+[u8; 64] × count       signatures
+[u8]                   0x80 for v0; absent for legacy
+[u8; 3]                header: required signatures, read-only signed, read-only unsigned
+compact-u16            account key count
+[u8; 32] × count       account keys
+[u8; 32]               recent blockhash
+compact-u16            instruction count
+instruction × count:
+  u8                   program id index
+  compact-u16, [u8]    account indexes
+  compact-u16, [u8]    data
+v0 only:
+  compact-u16          address table lookup count
+  lookup × count:
+    [u8; 32]           table address
+    compact-u16, [u8]  writable indexes
+    compact-u16, [u8]  read-only indexes
+```
+
+A compact-u16 is 1 to 3 bytes, 7 bits per byte, least significant first, with the high bit set on every byte except the last.
+
+### v1 transactions
+
+v1 puts the message first and the signatures last, and has no address table lookups.
+
+```text
+u8                     0x81
+[u8; 3]                header
+u32                    config mask
+[u8; 32]               recent blockhash
+u8                     instruction count
+u8                     account key count
+[u8; 32] × count       account keys
+config values          in mask order, present only when their bits are set
+instruction header × instruction count:
+  u8                   program id index
+  u8                   account index count
+  u16                  data length
+instruction payload × instruction count:
+  [u8]                 account indexes
+  [u8]                 data
+[u8; 64] × header[0]   signatures
+```
+
+| Mask bits | Value | Size |
+|---|---|---|
+| `0b00011` (both bits) | Priority fee | u64 |
+| `0b00100` | Compute unit limit | u32 |
+| `0b01000` | Loaded accounts data size limit | u32 |
+| `0b10000` | Heap size | u32 |
+
+## Account keys and lookups
+
+Instruction account indexes point into the static account keys first, then into addresses loaded from lookup tables (writable, then read-only). Resolving lookup-table addresses needs the table's contents, which you can read with RPC `getAccountInfo`. Program ids are always static keys, so filtering by program never needs lookups.

@@ -1,0 +1,78 @@
+---
+title: "Yellowstone gRPC"
+description: "Filtered real-time streams of Solana accounts, transactions, slots, block meta and entries."
+---
+
+Yellowstone gRPC is the Geyser streaming interface most Solana tooling already speaks. Point an existing Yellowstone client at the endpoint and send your key as `x-token`.
+
+| | |
+|---|---|
+| Endpoint | `http://ams.rpc.sodae.io:10201` (plaintext HTTP/2) |
+| Service | `geyser.Geyser` |
+| Authentication | `x-token` metadata |
+| Plans | [Shared seat or per GB](/pricing#yellowstone-grpc) |
+
+## Clients
+
+| Language | Package |
+|---|---|
+| Rust | [`yellowstone-grpc-client`](https://crates.io/crates/yellowstone-grpc-client) and `yellowstone-grpc-proto` |
+| TypeScript | [`@triton-one/yellowstone-grpc`](https://www.npmjs.com/package/@triton-one/yellowstone-grpc) |
+| Go | Code generated from [`geyser.proto` and `solana-storage.proto`](https://github.com/sodae-io/sodae-docs/tree/main/examples/proto) |
+
+## Subscribe
+
+`Subscribe` is a bidirectional stream. Send a `SubscribeRequest` with one or more named filters; each update names the filters it matched in `filters`.
+
+| Filter | Delivers | Useful fields |
+|---|---|---|
+| `accounts` | Account writes | `account` (pubkeys), `owner` (program ids), `filters` (`memcmp`, `datasize`) |
+| `transactions` | Transactions with status meta | `account_include`, `account_exclude`, `account_required`, `vote`, `failed`, `signature` |
+| `slots` | Slot status changes | `filter_by_commitment` |
+| `blocks_meta` | Block metadata (blockhash, height, time, counts) | |
+| `entry` | Ledger entries | |
+
+Block and transaction-status subscriptions are not available. Use `transactions` together with `blocks_meta` instead.
+
+### Commitment
+
+Set `commitment` to `PROCESSED`, `CONFIRMED` or `FINALIZED`. `PROCESSED` gives the earliest updates; a processed update can still belong to a slot that is later skipped.
+
+### Example request
+
+```json
+{
+  "transactions": {
+    "pump": {
+      "vote": false,
+      "failed": false,
+      "account_include": ["pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA"]
+    }
+  },
+  "commitment": "PROCESSED"
+}
+```
+
+## Keepalive
+
+The server sends a `ping` update about every 15 seconds. Reply on the same stream with a request that carries only `ping`:
+
+```json
+{ "ping": { "id": 1 } }
+```
+
+The server answers with a `pong` update. A ping-only request leaves your filters unchanged.
+
+## Unary calls
+
+The same service answers `GetSlot`, `GetBlockHeight`, `GetLatestBlockhash` and `Ping`, each with an optional commitment.
+
+## Staying connected
+
+- Set the client's maximum decoded message size to at least 64 MB. Large account and transaction updates exceed default limits.
+- Streams can end during maintenance. Reconnect with exponential backoff and resubscribe; the [examples](/yellowstone/examples) do this.
+- Do not retry on `UNAUTHENTICATED`, `NOT_ENTITLED`, `IP_NOT_ALLOWED` or `QUOTA_EXCEEDED`. These need a change on your side. See [Errors](/errors).
+
+## Metering
+
+Per-GB plans and trials count the bytes streamed to you. Narrow filters use less data: prefer `account_include` or `owner` over broad subscriptions, and skip vote transactions unless you need them.

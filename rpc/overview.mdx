@@ -1,0 +1,93 @@
+---
+title: "RPC"
+description: "Solana JSON-RPC with full history and the Digital Asset Standard API."
+---
+
+| | |
+|---|---|
+| Endpoint | `http://ams.rpc.sodae.io:8899` |
+| Protocol | JSON-RPC 2.0 over HTTP `POST` |
+| Authentication | `x-token` header, `Authorization: Bearer`, or `?api-key=` |
+| Plans | [Priced by request rate](/pricing#rpc) |
+
+## Make a request
+
+<CodeGroup>
+
+```bash curl
+curl http://ams.rpc.sodae.io:8899 \
+  -H "x-token: $SODAE_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}'
+```
+
+```typescript TypeScript
+const response = await fetch("http://ams.rpc.sodae.io:8899", {
+  method: "POST",
+  headers: { "content-type": "application/json", "x-token": process.env.SODAE_TOKEN! },
+  body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getLatestBlockhash" }),
+});
+console.log(await response.json());
+```
+
+```rust Rust
+let response: serde_json::Value = reqwest::Client::new()
+    .post("http://ams.rpc.sodae.io:8899")
+    .header("x-token", token)
+    .json(&serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "getLatestBlockhash"}))
+    .send()
+    .await?
+    .json()
+    .await?;
+```
+
+```go Go
+body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}`)
+request, _ := http.NewRequest("POST", "http://ams.rpc.sodae.io:8899", body)
+request.Header.Set("content-type", "application/json")
+request.Header.Set("x-token", token)
+response, err := http.DefaultClient.Do(request)
+```
+
+</CodeGroup>
+
+Standard Solana SDKs work unchanged. Pass the URL with `?api-key=` appended, or set the `x-token` header if the SDK lets you add headers:
+
+```typescript
+import { Connection } from "@solana/web3.js";
+
+const connection = new Connection("http://ams.rpc.sodae.io:8899", {
+  httpHeaders: { "x-token": process.env.SODAE_TOKEN! },
+});
+```
+
+## Batches
+
+Send a JSON array of requests to get an array of responses:
+
+```json
+[
+  { "jsonrpc": "2.0", "id": 1, "method": "getSlot" },
+  { "jsonrpc": "2.0", "id": 2, "method": "getBlockHeight" }
+]
+```
+
+## History
+
+The endpoint serves the full ledger history: `getBlock`, `getTransaction` and `getSignaturesForAddress` reach back to genesis. `getSignatureStatuses` returns statuses for recent transactions; it does not support `searchTransactionHistory`.
+
+## Rate limits
+
+Your plan sets requests per second; trials allow 5. Requests above the rate get HTTP `429` with JSON-RPC code `-429`. Back off and retry.
+
+## Credits
+
+Every method has a credit cost, listed in [Methods](/rpc/methods). Trials spend from a fixed credit allowance; when it runs out, requests get HTTP `402`. Paid RPC plans have no credit limit.
+
+## Large responses
+
+Responses are streamed as they are produced, so large results such as `getProgramAccounts` over a big program are supported. Use `dataSlice` and filters to keep responses small.
+
+## WebSocket
+
+RPC does not offer WebSocket subscriptions. Use [Yellowstone gRPC](/yellowstone/overview) for real-time account, transaction and slot updates.

@@ -1,0 +1,26 @@
+---
+title: "SodaStream"
+description: "Raw shreds forwarded straight to your server."
+---
+
+<Note>
+SodaStream is coming soon.
+</Note>
+
+SodaStream forwards raw shreds to your server exactly as leaders broadcast them, undecoded and untouched. Shreds are the fragments a leader sends out before a block is assembled, so taking them directly puts you ahead of anything waiting for completed blocks.
+
+| | |
+|---|---|
+| Delivery | Pushed to your origin IP and port |
+| Origin IPs | 1 per plan |
+| Format | Raw Solana shreds, unmodified |
+
+## How delivery works
+
+Shreds are pushed straight to your server; there is no URL to poll and no proxy for you to run. You provide an origin IP and a port to receive on, and the stream starts within seconds of both being set.
+
+Make sure the port is open to inbound traffic in your server's firewall.
+
+## Raw or decoded
+
+Raw shreds are the wire fragments, and you deserialize them yourself. That suits validators and trading systems that already consume shreds. If you want transactions already parsed, use [Preplay Shreds](/preplay/overview), which reassembles shreds into entries and streams them over gRPC.

@@ -1,0 +1,54 @@
+---
+title: "Preplay Shreds"
+description: "Entries decoded from shreds as they arrive, before the block is complete."
+---
+
+A leader broadcasts its block as shreds while it is still producing it. Preplay Shreds reassembles those shreds into ledger entries the moment they are complete and streams them to you, so you see each transaction in leader order before the block is finished or replayed.
+
+| | |
+|---|---|
+| Endpoint | `http://ams.rpc.sodae.io:10301` (plaintext HTTP/2) |
+| Method | `shredstream.ShredstreamProxy/SubscribeEntries` |
+| Authentication | `x-token` metadata |
+| Plans | [Binary Decoded Shreds or per GB](/pricing#preplay-shreds) |
+
+## API
+
+```protobuf shredstream.proto
+syntax = "proto3";
+
+package shredstream;
+
+service ShredstreamProxy {
+  rpc SubscribeEntries(SubscribeEntriesRequest) returns (stream Entry);
+}
+
+message SubscribeEntriesRequest {}
+
+message Entry {
+  uint64 slot = 1;
+  bytes entries = 2;
+}
+```
+
+`SubscribeEntries` takes an empty request and streams messages until you disconnect. Each message holds one batch of entries from `slot`. A slot arrives as several batches, in order.
+
+`entries` is a serialized list of Solana ledger entries, each carrying the transactions it recorded. See [Decoding entries](/preplay/decoding) for the exact layout and ready-made decoders.
+
+## What you receive
+
+- **Signed transactions**, in the order the leader recorded them, including legacy, v0 and v1 transactions.
+- **No execution results.** The transactions have not been executed yet, so there is no status, logs, fee or balance change. A transaction you see here can still fail, and the slot can still be skipped.
+- **No server-side filtering.** Every batch is delivered; filter by program or account in your client, as the [examples](/preplay/examples) do.
+
+For executed transactions with status and filtering, use [Yellowstone gRPC](/yellowstone/overview).
+
+## Staying connected
+
+- Set the client's maximum decoded message size to at least 64 MB.
+- Reconnect with exponential backoff when a stream ends. Nothing is replayed on reconnect; entries broadcast while you were disconnected are not resent.
+- Do not retry on `UNAUTHENTICATED`, `NOT_ENTITLED`, `IP_NOT_ALLOWED` or `QUOTA_EXCEEDED`. See [Errors](/errors).
+
+## Metering
+
+Per-GB plans and trials count the bytes streamed to you. The stream is unfiltered, so it uses data at the network's full transaction rate. For sustained use, the fixed-price Binary Decoded Shreds plan has no data cap.

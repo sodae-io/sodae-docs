@@ -1,0 +1,83 @@
+---
+title: "Pricing"
+description: "Plans, data packs, free trials and payment."
+---
+
+Prices are in US dollars. A month is 30 days. Plans do not renew automatically; buy again before a plan expires to keep access.
+
+## RPC
+
+RPC is priced by request rate, from 25 to 1,000 requests per second. Paid plans have no credit limit; the request rate is the only limit.
+
+| Requests per second | Price per month |
+|---|---|
+| 25 | $19.08 |
+| 50 | $25.00 |
+| 100 | $36.84 |
+| 250 | $72.37 |
+| 500 | $131.58 |
+| 1,000 | $250.00 |
+
+The monthly price is \$13.16 plus \$0.2368 per request per second, rounded to the cent.
+
+## Yellowstone gRPC
+
+| Plan | Price | Data | IPs |
+|---|---|---|---|
+| **Shared seat** | $250 / month | No data cap | 1 |
+| **Per GB** (shown as Dedicated) | $0.05 per GB, from 200 GB | What you buy | Any number |
+
+## Preplay Shreds
+
+| Plan | Price | Data | IPs |
+|---|---|---|---|
+| **Binary Decoded Shreds** | $350 / month | No data cap | 1 |
+| **Per GB** | $0.05 per GB, from 200 GB | What you buy | Any number |
+
+## Price Feeds
+
+| Plan | Price | Coverage | IPs |
+|---|---|---|---|
+| **Price Feeds Access** | $699 / month | Every token, every pool | 1 |
+
+## SodaStream
+
+Coming soon.
+
+## How data is counted
+
+Per-GB plans and trials meter the bytes streamed to you. Fixed-price plans have no data cap.
+
+- Data packs stack. Buy more at any time and the amounts add up.
+- With several plans for the same product, usage draws from the plan that expires first.
+- When an allowance runs out, new streams are refused with [`QUOTA_EXCEEDED`](/errors) and open streams end.
+- Unused data expires with the plan.
+
+## Free trials
+
+| Product | Trial |
+|---|---|
+| RPC | 100,000 credits for 30 days at 5 requests per second |
+| Yellowstone gRPC | 5 GB for 7 days |
+| Preplay Shreds | On request |
+| Price Feeds | On request |
+
+Request a trial with the **Claim** button on the product page. Each request names the server IP the trial is bound to and is reviewed before it starts. RPC trials spend credits per method; see [credit costs](/rpc/methods).
+
+## Paying
+
+Pay in **USDC or USDT on Solana**.
+
+- **Checkout.** Add plans to the basket, then pay by wallet (Phantom or Solflare), by scanning the Solana Pay QR code, or by sending the exact amount to the address shown.
+- **Quotes.** A payment quote is valid for 30 minutes. The amount can differ from the list price by a few cents so the transfer can be matched to your order. Send the exact amount shown.
+- **Activation.** A plan starts as soon as the payment is confirmed on-chain. Its 30 days run from then, including any time before you bind an IP to a fixed-price plan.
+
+### Account balance
+
+You can deposit to an account balance and pay from it.
+
+- The first deposit is at least \$80; later top-ups are at least \$1.
+- RPC plans and per-GB data are paid from the balance.
+- If a transfer does not match an order, or pays more than it, the difference is credited to your balance.
+
+If a payment arrives after its quote expired, email [support@sodae.io](mailto:support@sodae.io) with the transaction signature.

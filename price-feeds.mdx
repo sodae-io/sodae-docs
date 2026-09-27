@@ -1,0 +1,38 @@
+---
+title: "Price Feeds"
+description: "Every Solana transaction decoded into price updates."
+---
+
+Price Feeds decodes every transaction and turns anything that moves a price into a price update: a swap on any pool, an oracle program writing a new value. Coverage follows from decoding rather than a curated list, so a new pool is priced from its first swap.
+
+| | |
+|---|---|
+| Plan | [Price Feeds Access](/pricing#price-feeds), $699 / month |
+| IPs | 1 |
+| Coverage | Every token, every pool |
+
+## Why decode instead of reading an oracle
+
+An oracle publishes a settled value after consensus, so every reader sees it at the same moment. Decoding the transaction stream gives you the move as it lands, including swaps the oracle has not reflected yet. Swap prices and oracle updates arrive in the same feed.
+
+## Covered DEX programs
+
+Raydium, Raydium CLMM, Raydium CPMM, Orca, Orca Token Swap, Orca Swap v2, Meteora, Meteora DAMM, Meteora DAMM v2, Meteora DBC, Meteora Pools, Phoenix, PumpSwap, Pump, Heaven, SolFi, SolFi v2, HumidiFi, Byreal CLMM, Sanctum, PancakeSwap, Manifest, Openbook v2, GooseFX, FluxBeam, Saros AMM, Fusion AMM, LaunchLab, Daos.fun, Creator.fun, Moonit, Boop, AlphaQ, Tessera V, Token Mill, Gavel, Futarchy AMM, Zora, BisonFi, GoonFi, GoonFi v2, ZeroFi, Obric v2, Invariant, Stabble Weighted, Stabble Stable, Saber, Bonkswap, GuacSwap, Whale Street, 1Dex and PrintDex.
+
+## Getting access
+
+<Steps>
+  <Step title="Buy Price Feeds Access">
+    Add the plan under **Plans** on the Price Feeds page and check out. See [Paying](/pricing#paying).
+  </Step>
+  <Step title="Bind your server's IP">
+    The plan allows one IP. Add your server's public IP under **Plans → Allowed IPs**.
+  </Step>
+  <Step title="Connect">
+    Connection details for the feed are provided when your plan starts. Ask on [Discord](https://discord.gg/GyrqUMBr7X) or email [support@sodae.io](mailto:support@sodae.io).
+  </Step>
+</Steps>
+
+## Pairing with other products
+
+Price Feeds pairs with [Preplay Shreds](/preplay/overview) or [Yellowstone gRPC](/yellowstone/overview), so your price view and your transaction view come from the same place over the same network path.
