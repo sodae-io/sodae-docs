@@ -3,25 +3,24 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"regexp"
 	"slices"
 	"time"
 
-	bin "github.com/gagliardetto/binary"
-	"github.com/gagliardetto/solana-go"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	pb "sodae-examples/proto/shredstream"
+	pb "sodae-examples/proto/geyser"
 )
 
 const defaultEndpoint = "http://ams.rpc.sodae.io:10301"
@@ -30,12 +29,6 @@ var (
 	fatal     = []string{"UNAUTHENTICATED", "NOT_ENTITLED", "IP_NOT_ALLOWED", "QUOTA_EXCEEDED", "AUTH_RATE_LIMITED"}
 	codeInMsg = regexp.MustCompile(`\(code: ([A-Z_]+)\)`)
 )
-
-type Entry struct {
-	NumHashes    uint64
-	Hash         solana.Hash
-	Transactions []solana.Transaction
-}
 
 func main() {
 	endpoint := os.Getenv("SODAE_PREPLAY_URL")
@@ -46,18 +39,15 @@ func main() {
 	if token == "" {
 		exit("set SODAE_TOKEN to your API token")
 	}
-	var program *solana.PublicKey
-	if len(os.Args) > 1 {
-		key, err := solana.PublicKeyFromBase58(os.Args[1])
-		if err != nil {
-			exit("the argument must be a program id")
-		}
-		program = &key
+	request, err := buildRequest(os.Args[1:])
+	if err != nil {
+		exit(err.Error())
 	}
+	detailed := len(os.Args) > 1
 
 	delay := time.Second
 	for {
-		err := subscribe(endpoint, token, program, &delay)
+		err := subscribe(endpoint, token, request, detailed, &delay)
 		if err == nil {
 			fmt.Fprintln(os.Stderr, "stream closed by the server")
 		} else {
@@ -73,7 +63,21 @@ func main() {
 	}
 }
 
-func subscribe(endpoint, token string, program *solana.PublicKey, delay *time.Duration) error {
+func buildRequest(args []string) (*pb.SubscribeDeshredRequest, error) {
+	vote := false
+	filter := &pb.SubscribeRequestFilterDeshredTransactions{Vote: &vote}
+	if len(args) > 0 {
+		if key, err := base58.Decode(args[0]); err != nil || len(key) != 32 {
+			return nil, errors.New("the argument must be a program id")
+		}
+		filter.AccountInclude = []string{args[0]}
+	}
+	return &pb.SubscribeDeshredRequest{
+		DeshredTransactions: map[string]*pb.SubscribeRequestFilterDeshredTransactions{"preplay": filter},
+	}, nil
+}
+
+func subscribe(endpoint, token string, request *pb.SubscribeDeshredRequest, detailed bool, delay *time.Duration) error {
 	conn, err := dial(endpoint)
 	if err != nil {
 		return err
@@ -81,12 +85,16 @@ func subscribe(endpoint, token string, program *solana.PublicKey, delay *time.Du
 	defer conn.Close()
 
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "x-token", token)
-	stream, err := pb.NewShredstreamProxyClient(conn).SubscribeEntries(ctx, &pb.SubscribeEntriesRequest{})
+	stream, err := pb.NewGeyserClient(conn).SubscribeDeshred(ctx)
 	if err != nil {
 		return err
 	}
+	if err := stream.Send(request); err != nil {
+		return err
+	}
+	perSlot := map[uint64]int{}
 	for {
-		message, err := stream.Recv()
+		update, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
 			return nil
 		}
@@ -94,81 +102,52 @@ func subscribe(endpoint, token string, program *solana.PublicKey, delay *time.Du
 			return withTrailer(err, stream.Trailer())
 		}
 		*delay = time.Second
-		entries, err := decodeEntries(message.Entries)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "slot %d: could not decode entries: %v\n", message.Slot, err)
-			continue
-		}
-		report(message.Slot, entries, program)
-	}
-}
-
-func decodeEntries(data []byte) ([]Entry, error) {
-	decoder := bin.NewBinDecoder(data)
-	count, err := decoder.ReadUint64(binary.LittleEndian)
-	if err != nil {
-		return nil, err
-	}
-	entries := make([]Entry, 0, min(count, 1<<16))
-	for range count {
-		var entry Entry
-		if entry.NumHashes, err = decoder.ReadUint64(binary.LittleEndian); err != nil {
-			return nil, err
-		}
-		hash, err := decoder.ReadNBytes(32)
-		if err != nil {
-			return nil, err
-		}
-		entry.Hash = solana.HashFromBytes(hash)
-		txCount, err := decoder.ReadUint64(binary.LittleEndian)
-		if err != nil {
-			return nil, err
-		}
-		entry.Transactions = make([]solana.Transaction, 0, min(txCount, 1<<16))
-		for range txCount {
-			var tx solana.Transaction
-			if err := tx.UnmarshalWithDecoder(decoder); err != nil {
-				return nil, err
+		switch u := update.UpdateOneof.(type) {
+		case *pb.SubscribeUpdateDeshred_Ping:
+			if err := stream.Send(&pb.SubscribeDeshredRequest{Ping: &pb.SubscribeRequestPing{Id: 1}}); err != nil {
+				return err
 			}
-			entry.Transactions = append(entry.Transactions, tx)
+		case *pb.SubscribeUpdateDeshred_DeshredTransaction:
+			tx, slot := u.DeshredTransaction.GetTransaction(), u.DeshredTransaction.GetSlot()
+			if tx == nil {
+				continue
+			}
+			if detailed {
+				printTransaction(slot, tx)
+				continue
+			}
+			perSlot[slot]++
+			for len(perSlot) > 2 {
+				oldest := slices.Min(slices.Collect(maps.Keys(perSlot)))
+				fmt.Printf("%d transactions=%d\n", oldest, perSlot[oldest])
+				delete(perSlot, oldest)
+			}
 		}
-		entries = append(entries, entry)
 	}
-	return entries, nil
 }
 
-func report(slot uint64, entries []Entry, program *solana.PublicKey) {
-	var transactions []*solana.Transaction
-	for i := range entries {
-		for j := range entries[i].Transactions {
-			transactions = append(transactions, &entries[i].Transactions[j])
-		}
-	}
-	if program == nil {
-		fmt.Printf("%d entries=%d transactions=%d\n", slot, len(entries), len(transactions))
+func printTransaction(slot uint64, tx *pb.SubscribeUpdateDeshredTransactionInfo) {
+	message := tx.GetTransaction().GetMessage()
+	if message == nil {
 		return
 	}
-	for _, tx := range transactions {
-		keys := tx.Message.AccountKeys
-		if !slices.Contains(keys, *program) {
-			continue
+	key := func(i uint32) string {
+		if int(i) < len(message.AccountKeys) {
+			return base58.Encode(message.AccountKeys[i])
 		}
-		fmt.Printf("%d %s signer=%s version=%s lookups=%d\n",
-			slot, tx.Signatures[0], keys[0], version(tx), len(tx.Message.AddressTableLookups))
-		for _, ix := range tx.Message.Instructions {
-			fmt.Printf("  %s accounts=%d data=%dB\n", keys[ix.ProgramIDIndex], len(ix.Accounts), len(ix.Data))
+		return ""
+	}
+	version := "legacy"
+	if message.Versioned {
+		version = "0"
+		if message.Config != nil {
+			version = "1"
 		}
 	}
-}
-
-func version(tx *solana.Transaction) string {
-	switch tx.Message.GetVersion() {
-	case solana.MessageVersionV0:
-		return "0"
-	case solana.MessageVersionV1:
-		return "1"
-	default:
-		return "legacy"
+	fmt.Printf("%d %s signer=%s version=%s lookups=%d loaded=%d\n", slot, base58.Encode(tx.Signature), key(0), version,
+		len(message.AddressTableLookups), len(tx.LoadedWritableAddresses)+len(tx.LoadedReadonlyAddresses))
+	for _, ix := range message.Instructions {
+		fmt.Printf("  %s accounts=%d data=%dB\n", key(ix.ProgramIdIndex), len(ix.Accounts), len(ix.Data))
 	}
 }
 

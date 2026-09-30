@@ -1,11 +1,12 @@
-import * as grpc from "@grpc/grpc-js";
-import * as protoLoader from "@grpc/proto-loader";
-import { fileURLToPath } from "node:url";
-import { decodeEntries, type Transaction } from "./entries.js";
+import Client, {
+  type SubscribeDeshredRequest,
+  type SubscribeUpdateDeshred,
+  type SubscribeUpdateDeshredTransactionInfo,
+} from "@triton-one/yellowstone-grpc";
+import bs58 from "bs58";
 
-const ENDPOINT = new URL(process.env.SODAE_PREPLAY_URL ?? "http://ams.rpc.sodae.io:10301");
+const ENDPOINT = process.env.SODAE_PREPLAY_URL ?? "http://ams.rpc.sodae.io:10301";
 const TOKEN = process.env.SODAE_TOKEN;
-const PROTO = fileURLToPath(new URL("../../proto/shredstream.proto", import.meta.url));
 const FATAL = new Set([
   "UNAUTHENTICATED",
   "NOT_ENTITLED",
@@ -14,80 +15,73 @@ const FATAL = new Set([
   "AUTH_RATE_LIMITED",
 ]);
 
-interface EntriesMessage {
-  slot: string;
-  entries: Buffer;
+function buildRequest(program: string | undefined): SubscribeDeshredRequest {
+  if (program !== undefined && bs58.decode(program).length !== 32) {
+    throw new Error("the argument must be a program id");
+  }
+  return {
+    deshredTransactions: {
+      preplay: {
+        vote: false,
+        accountInclude: program ? [program] : [],
+        accountExclude: [],
+        accountRequired: [],
+      },
+    },
+    slots: {},
+  };
 }
 
-const definition = protoLoader.loadSync(PROTO, { longs: String });
-const shredstream = grpc.loadPackageDefinition(definition).shredstream as grpc.GrpcObject;
-const ShredstreamProxy = shredstream.ShredstreamProxy as grpc.ServiceClientConstructor;
-
-function handle(message: EntriesMessage, program: string | undefined): void {
-  let entries;
-  try {
-    entries = decodeEntries(message.entries);
-  } catch (error) {
-    console.error(`slot ${message.slot}: could not decode entries: ${error}`);
-    return;
-  }
-  const transactions = entries.flatMap((entry) => entry.transactions);
-  if (!program) {
-    console.log(message.slot, `entries=${entries.length}`, `transactions=${transactions.length}`);
-    return;
-  }
-  for (const tx of transactions) {
-    if (tx.accountKeys.includes(program)) printTransaction(message.slot, tx);
-  }
-}
-
-function printTransaction(slot: string, tx: Transaction): void {
+function printTransaction(slot: string, tx: SubscribeUpdateDeshredTransactionInfo): void {
+  const message = tx.transaction?.message;
+  if (!message) return;
+  const key = (i: number) => (message.accountKeys[i] ? bs58.encode(message.accountKeys[i]) : "");
+  const version = !message.versioned ? "legacy" : message.config ? "1" : "0";
   console.log(
     slot,
-    tx.signatures[0],
-    `signer=${tx.accountKeys[0]}`,
-    `version=${tx.version}`,
-    `lookups=${tx.addressTableLookups.length}`,
+    bs58.encode(tx.signature),
+    `signer=${key(0)}`,
+    `version=${version}`,
+    `lookups=${message.addressTableLookups.length}`,
+    `loaded=${tx.loadedWritableAddresses.length + tx.loadedReadonlyAddresses.length}`,
   );
-  for (const ix of tx.instructions) {
-    console.log(
-      `  ${tx.accountKeys[ix.programIdIndex]}`,
-      `accounts=${ix.accounts.length}`,
-      `data=${ix.data.length}B`,
-    );
+  for (const ix of message.instructions) {
+    console.log(`  ${key(ix.programIdIndex)}`, `accounts=${ix.accounts.length}`, `data=${ix.data.length}B`);
   }
 }
 
-function subscribe(program: string | undefined, onConnected: () => void): Promise<void> {
-  const credentials =
-    ENDPOINT.protocol === "https:"
-      ? grpc.credentials.createSsl()
-      : grpc.credentials.createInsecure();
-  const client = new ShredstreamProxy(ENDPOINT.host, credentials, {
-    "grpc.max_receive_message_length": 64 * 1024 * 1024,
-  });
-  const metadata = new grpc.Metadata();
-  metadata.set("x-token", TOKEN ?? "");
-  const call = client.SubscribeEntries({}, metadata) as grpc.ClientReadableStream<EntriesMessage>;
-  return new Promise((resolve, reject) => {
-    call.on("data", (message: EntriesMessage) => {
+async function subscribe(program: string | undefined, onConnected: () => void): Promise<void> {
+  const client = new Client(ENDPOINT, TOKEN, { grpcMaxDecodingMessageSize: 64 * 1024 * 1024 });
+  await client.connect();
+  const stream = await client.subscribeDeshred();
+  stream.write(buildRequest(program));
+  const perSlot = new Map<string, number>();
+  await new Promise<void>((resolve, reject) => {
+    stream.on("data", (update: SubscribeUpdateDeshred) => {
       onConnected();
-      handle(message, program);
+      if (update.ping) {
+        stream.write({ deshredTransactions: {}, slots: {}, ping: { id: 1 } });
+        return;
+      }
+      const received = update.deshredTransaction;
+      if (!received?.transaction) return;
+      if (program) {
+        printTransaction(received.slot, received.transaction);
+        return;
+      }
+      perSlot.set(received.slot, (perSlot.get(received.slot) ?? 0) + 1);
+      while (perSlot.size > 2) {
+        const oldest = [...perSlot.keys()].reduce((a, b) => (BigInt(a) < BigInt(b) ? a : b));
+        console.log(oldest, `transactions=${perSlot.get(oldest)}`);
+        perSlot.delete(oldest);
+      }
     });
-    call.on("error", (error) => {
-      client.close();
-      reject(error);
-    });
-    call.on("end", () => {
-      client.close();
-      resolve();
-    });
+    stream.on("error", reject);
+    stream.on("end", resolve);
   });
 }
 
 function errorCode(error: unknown): string | undefined {
-  const fromMetadata = (error as grpc.ServiceError).metadata?.get("x-error-code")[0];
-  if (fromMetadata) return String(fromMetadata);
   const message = error instanceof Error ? error.message : String(error);
   return /\(code: ([A-Z_]+)\)/.exec(message)?.[1];
 }
@@ -95,6 +89,7 @@ function errorCode(error: unknown): string | undefined {
 async function main(): Promise<void> {
   if (!TOKEN) throw new Error("set SODAE_TOKEN to your API token");
   const program = process.argv[2];
+  buildRequest(program);
   let delay = 1_000;
   for (;;) {
     try {
@@ -102,8 +97,7 @@ async function main(): Promise<void> {
       console.error("stream closed by the server");
     } catch (error) {
       const code = errorCode(error);
-      const details = (error as grpc.ServiceError).details ?? String(error);
-      console.error(`stream error ${code ?? "-"}: ${details}`);
+      console.error(`stream error ${code ?? "-"}: ${error instanceof Error ? error.message : error}`);
       if (code && FATAL.has(code)) process.exit(1);
     }
     console.error(`reconnecting in ${delay / 1000}s`);

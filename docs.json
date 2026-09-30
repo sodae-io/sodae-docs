@@ -9,6 +9,12 @@
     "dark": "#08a38d"
   },
   "favicon": "/favicon.ico",
+  "seo": {
+    "metatags": {
+      "og:image": "https://docs.sodae.io/images/og/sodae-preview.jpg",
+      "twitter:image": "https://docs.sodae.io/images/og/sodae-preview.jpg"
+    }
+  },
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",

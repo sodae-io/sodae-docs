@@ -1,12 +1,14 @@
 ---
 title: "Preplay examples"
-description: "Runnable Preplay Shreds clients in Rust, TypeScript and Go that decode every transaction."
+description: "Runnable Preplay Shreds clients in Rust, TypeScript and Go."
+"og:image": "https://docs.sodae.io/images/og/decoded-shreds.jpg"
+"twitter:image": "https://docs.sodae.io/images/og/decoded-shreds.jpg"
 ---
 
-Each example subscribes to entries, decodes every transaction in every batch, reconnects with backoff, and exits with the server's error code when a stream is refused for a reason retrying will not fix.
+Each example subscribes with `SubscribeDeshred`, answers keepalive pings, reconnects with backoff, and exits with the server's error code when a stream is refused for a reason retrying will not fix.
 
-- Without an argument, it prints one line per batch: slot, entry count and transaction count.
-- With a program id, it prints every transaction that calls that program, with its signer, version, lookup-table count and each instruction's program, account count and data size.
+- Without an argument, it receives every transaction and prints one line per slot with the transaction count.
+- With a program id, it asks the server for only the transactions that use that program and prints each one with its signer, version, lookup-table count, number of addresses loaded from lookup tables, and each instruction's program, account count and data size.
 
 All three read `SODAE_TOKEN` and, optionally, `SODAE_PREPLAY_URL`.
 
@@ -46,13 +48,17 @@ go run ./preplay pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
 ## Output
 
 ```text
-450628532 entries=3 transactions=111
+451924839 transactions=446
+451924840 transactions=486
 ```
 
 ```text
-450628532 5mnv5WyWAxk76pyQsQqxE4hk2rUai2fYYYZN6qde9bW5zBW5dLnfrTMJcEfys6a7Hm41EVYVKeirCat1X3mx7Yrq signer=3uyUbmhraJeMYnVfCU39BG6DvLLvpE92VAxFBKMGDxQY version=0 lookups=0
+451924853 5AtEQrbW2RjHKnND6wvEvhSZLPg1cTu625gEA4y63UzaoY4sZxS5FiRHesdddnAK3yQcY4255oUseqwUiwxkqX2A signer=3KXgVpyEgcMq5TRX1d4rh6YngeQUNwLnqXereQ6xszSY version=0 lookups=0 loaded=0
+  ComputeBudget111111111111111111111111111111 accounts=0 data=5B
   ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL accounts=6 data=1B
-  pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA accounts=24 data=24B
+  11111111111111111111111111111111 accounts=2 data=12B
+  TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA accounts=1 data=1B
+  pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA accounts=23 data=24B
   TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA accounts=3 data=1B
 ```
 
@@ -61,49 +67,65 @@ go run ./preplay pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
 <CodeGroup>
 
 ```rust Rust
-let channel = Endpoint::from_shared(endpoint)?.connect().await?;
-let mut client = ShredstreamProxyClient::new(channel)
-    .max_decoding_message_size(64 * 1024 * 1024);
+let mut client = GeyserGrpcClient::build_from_shared(endpoint)?
+    .x_token(Some(token))?
+    .max_decoding_message_size(64 * 1024 * 1024)
+    .connect()
+    .await?;
 
-let mut request = Request::new(SubscribeEntriesRequest {});
-request.metadata_mut().insert("x-token", token.parse()?);
-let mut stream = client.subscribe_entries(request).await?.into_inner();
+let request = SubscribeDeshredRequest {
+    deshred_transactions: HashMap::from([(
+        "preplay".to_string(),
+        SubscribeRequestFilterDeshredTransactions {
+            vote: Some(false),
+            account_include: vec![program.to_string()],
+            ..Default::default()
+        },
+    )]),
+    ..Default::default()
+};
+let (mut sink, mut updates) = client.subscribe_deshred_with_request(Some(request)).await?;
 
-while let Some(message) = stream.message().await? {
-    let entries: Vec<Entry> = wincode::deserialize(&message.entries)?;
-    for tx in entries.iter().flat_map(|entry| &entry.transactions) {
-        let keys = tx.message.static_account_keys();
-        if keys.contains(&program) {
-            println!("{} {} signer={}", message.slot, tx.signatures[0], keys[0]);
+while let Some(update) = updates.next().await {
+    match update?.update_oneof {
+        Some(UpdateOneof::Ping(_)) => {
+            sink.send(SubscribeDeshredRequest {
+                ping: Some(SubscribeRequestPing { id: 1 }),
+                ..Default::default()
+            })
+            .await?;
         }
+        Some(UpdateOneof::DeshredTransaction(update)) => {
+            let tx = update.transaction.unwrap();
+            println!("{} {}", update.slot, bs58::encode(&tx.signature).into_string());
+        }
+        _ => {}
     }
 }
 ```
 
 ```typescript TypeScript
-import * as grpc from "@grpc/grpc-js";
-import * as protoLoader from "@grpc/proto-loader";
-import { decodeEntries } from "./entries.js";
+import Client from "@triton-one/yellowstone-grpc";
+import bs58 from "bs58";
 
-const definition = protoLoader.loadSync("shredstream.proto", { longs: String });
-const { shredstream } = grpc.loadPackageDefinition(definition) as any;
-const client = new shredstream.ShredstreamProxy(
-  "ams.rpc.sodae.io:10301",
-  grpc.credentials.createInsecure(),
-  { "grpc.max_receive_message_length": 64 * 1024 * 1024 },
-);
+const client = new Client("http://ams.rpc.sodae.io:10301", token, {
+  grpcMaxDecodingMessageSize: 64 * 1024 * 1024,
+});
+await client.connect();
+const stream = await client.subscribeDeshred();
+stream.write({
+  deshredTransactions: {
+    preplay: { vote: false, accountInclude: [program], accountExclude: [], accountRequired: [] },
+  },
+  slots: {},
+});
 
-const metadata = new grpc.Metadata();
-metadata.set("x-token", token);
-const call = client.SubscribeEntries({}, metadata);
-
-call.on("data", (message: { slot: string; entries: Buffer }) => {
-  for (const entry of decodeEntries(message.entries)) {
-    for (const tx of entry.transactions) {
-      if (tx.accountKeys.includes(program)) {
-        console.log(message.slot, tx.signatures[0], `signer=${tx.accountKeys[0]}`);
-      }
-    }
+stream.on("data", (update) => {
+  if (update.ping) {
+    stream.write({ deshredTransactions: {}, slots: {}, ping: { id: 1 } });
+  } else if (update.deshredTransaction?.transaction) {
+    const { slot, transaction } = update.deshredTransaction;
+    console.log(slot, bs58.encode(transaction.signature));
   }
 });
 ```
@@ -113,23 +135,26 @@ conn, err := grpc.NewClient("ams.rpc.sodae.io:10301",
     grpc.WithTransportCredentials(insecure.NewCredentials()),
     grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(64<<20)))
 ctx := metadata.AppendToOutgoingContext(context.Background(), "x-token", token)
-stream, err := pb.NewShredstreamProxyClient(conn).SubscribeEntries(ctx, &pb.SubscribeEntriesRequest{})
+stream, err := pb.NewGeyserClient(conn).SubscribeDeshred(ctx)
+
+vote := false
+err = stream.Send(&pb.SubscribeDeshredRequest{
+    DeshredTransactions: map[string]*pb.SubscribeRequestFilterDeshredTransactions{
+        "preplay": {Vote: &vote, AccountInclude: []string{program}},
+    },
+})
 
 for {
-    message, err := stream.Recv()
+    update, err := stream.Recv()
     if err != nil {
         return err
     }
-    entries, err := decodeEntries(message.Entries)
-    if err != nil {
-        continue
-    }
-    for _, entry := range entries {
-        for _, tx := range entry.Transactions {
-            if slices.Contains(tx.Message.AccountKeys, program) {
-                fmt.Println(message.Slot, tx.Signatures[0], "signer="+tx.Message.AccountKeys[0].String())
-            }
-        }
+    switch u := update.UpdateOneof.(type) {
+    case *pb.SubscribeUpdateDeshred_Ping:
+        stream.Send(&pb.SubscribeDeshredRequest{Ping: &pb.SubscribeRequestPing{Id: 1}})
+    case *pb.SubscribeUpdateDeshred_DeshredTransaction:
+        tx := u.DeshredTransaction.GetTransaction()
+        fmt.Println(u.DeshredTransaction.Slot, base58.Encode(tx.GetSignature()))
     }
 }
 ```
@@ -139,6 +164,6 @@ for {
 The complete programs:
 
 - [Rust: `examples/rust/examples/preplay.rs`](https://github.com/sodae-io/sodae-docs/blob/main/examples/rust/examples/preplay.rs)
-- [TypeScript: `examples/typescript/src/preplay.ts`](https://github.com/sodae-io/sodae-docs/blob/main/examples/typescript/src/preplay.ts) and its decoder [`src/entries.ts`](https://github.com/sodae-io/sodae-docs/blob/main/examples/typescript/src/entries.ts)
+- [TypeScript: `examples/typescript/src/preplay.ts`](https://github.com/sodae-io/sodae-docs/blob/main/examples/typescript/src/preplay.ts)
 - [Go: `examples/go/preplay/main.go`](https://github.com/sodae-io/sodae-docs/blob/main/examples/go/preplay/main.go)
-- [`shredstream.proto`](https://github.com/sodae-io/sodae-docs/blob/main/examples/proto/shredstream.proto)
+- [`geyser.proto`](https://github.com/sodae-io/sodae-docs/blob/main/examples/proto/geyser.proto) and [`solana-storage.proto`](https://github.com/sodae-io/sodae-docs/blob/main/examples/proto/solana-storage.proto)

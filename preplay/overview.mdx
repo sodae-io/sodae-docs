@@ -1,54 +1,100 @@
 ---
 title: "Preplay Shreds"
-description: "Entries decoded from shreds as they arrive, before the block is complete."
+description: "Transactions decoded from shreds as they arrive, before the block is complete."
+"og:image": "https://docs.sodae.io/images/og/decoded-shreds.jpg"
+"twitter:image": "https://docs.sodae.io/images/og/decoded-shreds.jpg"
 ---
 
-A leader broadcasts its block as shreds while it is still producing it. Preplay Shreds reassembles those shreds into ledger entries the moment they are complete and streams them to you, so you see each transaction in leader order before the block is finished or replayed.
+A leader broadcasts its block as shreds while it is still producing it. Preplay Shreds reassembles those shreds the moment enough of them arrive, decodes every transaction and streams it to you, so you see each transaction in leader order before the block is finished or replayed.
 
 | | |
 |---|---|
 | Endpoint | `http://ams.rpc.sodae.io:10301` (plaintext HTTP/2) |
-| Method | `shredstream.ShredstreamProxy/SubscribeEntries` |
+| Method | `geyser.Geyser/SubscribeDeshred` (Yellowstone gRPC) |
 | Authentication | `x-token` metadata |
 | Plans | [Binary Decoded Shreds or per GB](/pricing#preplay-shreds) |
 
 ## API
 
-```protobuf shredstream.proto
-syntax = "proto3";
+The service speaks the Yellowstone gRPC protocol, so any Yellowstone client with `SubscribeDeshred` works, including `yellowstone-grpc-client` 14 for Rust and `@triton-one/yellowstone-grpc` 7 for TypeScript. The definitions are in [`geyser.proto`](https://github.com/sodae-io/sodae-docs/blob/main/examples/proto/geyser.proto) and [`solana-storage.proto`](https://github.com/sodae-io/sodae-docs/blob/main/examples/proto/solana-storage.proto).
 
-package shredstream;
-
-service ShredstreamProxy {
-  rpc SubscribeEntries(SubscribeEntriesRequest) returns (stream Entry);
+```protobuf geyser.proto
+service Geyser {
+  rpc SubscribeDeshred(stream SubscribeDeshredRequest) returns (stream SubscribeUpdateDeshred) {}
 }
 
-message SubscribeEntriesRequest {}
+message SubscribeDeshredRequest {
+  map<string, SubscribeRequestFilterDeshredTransactions> deshred_transactions = 1;
+  optional SubscribeRequestPing ping = 2;
+}
 
-message Entry {
-  uint64 slot = 1;
-  bytes entries = 2;
+message SubscribeRequestFilterDeshredTransactions {
+  optional bool vote = 1;
+  repeated string account_include = 2;
+  repeated string account_exclude = 3;
+  repeated string account_required = 4;
+}
+
+message SubscribeUpdateDeshred {
+  repeated string filters = 1;
+  oneof update_oneof {
+    SubscribeUpdateDeshredTransaction deshred_transaction = 2;
+    SubscribeUpdatePing ping = 3;
+    SubscribeUpdatePong pong = 4;
+  }
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message SubscribeUpdateDeshredTransaction {
+  SubscribeUpdateDeshredTransactionInfo transaction = 1;
+  uint64 slot = 2;
+}
+
+message SubscribeUpdateDeshredTransactionInfo {
+  bytes signature = 1;
+  bool is_vote = 2;
+  solana.storage.ConfirmedBlock.Transaction transaction = 3;
+  repeated bytes loaded_writable_addresses = 4;
+  repeated bytes loaded_readonly_addresses = 5;
+  uint32 completed_data_set_starting_shred_index = 6;
+  uint32 completed_data_set_ending_shred_index_exclusive = 7;
 }
 ```
 
-`SubscribeEntries` takes an empty request and streams messages until you disconnect. Each message holds one batch of entries from `slot`. A slot arrives as several batches, in order.
+Open the stream, then send a `SubscribeDeshredRequest` with one or more named filters. Each message you receive carries one transaction and the names of the filters it matched. See [Transaction format](/preplay/decoding) for how to read it.
 
-`entries` is a serialized list of Solana ledger entries, each carrying the transactions it recorded. See [Decoding entries](/preplay/decoding) for the exact layout and ready-made decoders.
+## Filters
+
+A filter matches a transaction when:
+
+- `account_include` is empty, or the transaction uses at least one of its accounts;
+- none of the `account_exclude` accounts appear in it;
+- it uses every account in `account_required`.
+
+Accounts are matched against the transaction's own account keys **and** the addresses it loads from address lookup tables. A filter with no accounts matches every transaction.
+
+- Vote transactions are never sent. Leave `vote` unset or set it to `false`; `true` is refused with `INVALID_ARGUMENT`.
+- Up to 16 filters per stream and 1,024 accounts per list. Filter names are at most 64 bytes.
+- Send a new request on the same stream at any time to replace the filters. A request with no filters stops delivery until you send new ones.
+- `slots` and `include_update_parent` are not supported and are refused.
 
 ## What you receive
 
-- **Signed transactions**, in the order the leader recorded them, including legacy, v0 and v1 transactions.
+- **Signed transactions**, in the order the leader recorded them: legacy, v0 and v1.
+- **Lookup-table addresses already resolved** in `loaded_writable_addresses` and `loaded_readonly_addresses`. In the rare case a table cannot be resolved, both lists are empty while the message still lists its `address_table_lookups`, and a filter with `account_exclude` skips that transaction.
 - **No execution results.** The transactions have not been executed yet, so there is no status, logs, fee or balance change. A transaction you see here can still fail, and the slot can still be skipped.
-- **No server-side filtering.** Every batch is delivered; filter by program or account in your client, as the [examples](/preplay/examples) do.
 
-For executed transactions with status and filtering, use [Yellowstone gRPC](/yellowstone/overview).
+For executed transactions with status, use [Yellowstone gRPC](/yellowstone/overview).
 
 ## Staying connected
 
+- The server sends a `ping` every 15 seconds. Reply with a request carrying `ping` so proxies between you and the service keep the connection open; the reply does not change your filters.
 - Set the client's maximum decoded message size to at least 64 MB.
-- Reconnect with exponential backoff when a stream ends. Nothing is replayed on reconnect; entries broadcast while you were disconnected are not resent.
+- Read continuously. A client that falls behind the stream, or reads nothing for 10 seconds, is disconnected with `DATA_LOSS`. Narrow your filters if you cannot keep up with the full stream.
+- Reconnect with exponential backoff when a stream ends. Nothing is replayed on reconnect; transactions broadcast while you were disconnected are not resent.
+- `UNAVAILABLE` and `RESOURCE_EXHAUSTED` without an error code are temporary: retry with backoff. `INVALID_ARGUMENT` means a filter was rejected: fix the request.
 - Do not retry on `UNAUTHENTICATED`, `NOT_ENTITLED`, `IP_NOT_ALLOWED` or `QUOTA_EXCEEDED`. See [Errors](/errors).
 
 ## Metering
 
-Per-GB plans and trials count the bytes streamed to you. The stream is unfiltered, so it uses data at the network's full transaction rate. For sustained use, the fixed-price Binary Decoded Shreds plan has no data cap.
+Per-GB plans and trials count the bytes streamed to you, so filters that narrow the stream also reduce what you use. For sustained use of the full stream, the fixed-price Binary Decoded Shreds plan has no data cap.

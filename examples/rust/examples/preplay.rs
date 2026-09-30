@@ -1,18 +1,18 @@
-use std::{env, process, time::Duration};
+use std::{
+    collections::{BTreeMap, HashMap},
+    env, process,
+    time::Duration,
+};
 
 use anyhow::Context;
-use sodae_examples::shredstream::{
-    SubscribeEntriesRequest, shredstream_proxy_client::ShredstreamProxyClient,
-};
-use solana_hash::Hash;
+use futures::{SinkExt, StreamExt};
 use solana_pubkey::Pubkey;
-use solana_transaction::versioned::{TransactionVersion, VersionedTransaction};
-use tonic::{
-    Request, Status,
-    metadata::MetadataValue,
-    transport::{ClientTlsConfig, Endpoint},
+use tonic::Status;
+use yellowstone_grpc_client::{ClientTlsConfig, GeyserGrpcClient, GeyserGrpcClientError};
+use yellowstone_grpc_proto::geyser::{
+    SubscribeDeshredRequest, SubscribeRequestFilterDeshredTransactions, SubscribeRequestPing,
+    SubscribeUpdateDeshredTransactionInfo, subscribe_update_deshred::UpdateOneof,
 };
-use wincode::{SchemaRead, containers, len::BincodeLen};
 
 const ENDPOINT: &str = "http://ams.rpc.sodae.io:10301";
 const FATAL: [&str; 5] = [
@@ -23,14 +23,6 @@ const FATAL: [&str; 5] = [
     "AUTH_RATE_LIMITED",
 ];
 
-#[derive(SchemaRead)]
-struct Entry {
-    _num_hashes: u64,
-    _hash: Hash,
-    #[wincode(with = "containers::Vec<VersionedTransaction, BincodeLen>")]
-    transactions: Vec<VersionedTransaction>,
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let endpoint = env::var("SODAE_PREPLAY_URL").unwrap_or_else(|_| ENDPOINT.to_string());
@@ -40,10 +32,21 @@ async fn main() -> anyhow::Result<()> {
         .map(|p| p.parse::<Pubkey>())
         .transpose()
         .context("the argument must be a program id")?;
+    let request = SubscribeDeshredRequest {
+        deshred_transactions: HashMap::from([(
+            "preplay".to_string(),
+            SubscribeRequestFilterDeshredTransactions {
+                vote: Some(false),
+                account_include: program.iter().map(Pubkey::to_string).collect(),
+                ..Default::default()
+            },
+        )]),
+        ..Default::default()
+    };
 
     let mut delay = Duration::from_secs(1);
     loop {
-        match subscribe(&endpoint, &token, program.as_ref(), &mut delay).await {
+        match subscribe(&endpoint, &token, request.clone(), program.is_some(), &mut delay).await {
             Ok(()) => eprintln!("stream closed by the server"),
             Err(status) => {
                 let code = error_code(&status);
@@ -62,72 +65,88 @@ async fn main() -> anyhow::Result<()> {
 async fn subscribe(
     endpoint: &str,
     token: &str,
-    program: Option<&Pubkey>,
+    request: SubscribeDeshredRequest,
+    detailed: bool,
     delay: &mut Duration,
 ) -> Result<(), Status> {
-    let mut channel = Endpoint::from_shared(endpoint.to_string())
+    let mut builder = GeyserGrpcClient::build_from_shared(endpoint.to_string())
+        .map_err(unavailable)?
+        .x_token(Some(token.to_string()))
         .map_err(unavailable)?
         .connect_timeout(Duration::from_secs(10))
-        .tcp_nodelay(true);
+        .max_decoding_message_size(64 * 1024 * 1024);
     if endpoint.starts_with("https://") {
-        channel = channel
+        builder = builder
             .tls_config(ClientTlsConfig::new().with_native_roots())
             .map_err(unavailable)?;
     }
-    let mut client = ShredstreamProxyClient::new(channel.connect().await.map_err(unavailable)?)
-        .max_decoding_message_size(64 * 1024 * 1024);
+    let mut client = builder.connect().await.map_err(unavailable)?;
+    let (mut sink, mut updates) = client
+        .subscribe_deshred_with_request(Some(request))
+        .await
+        .map_err(|e| match e {
+            GeyserGrpcClientError::TonicStatus(status) => status,
+            other => unavailable(other),
+        })?;
 
-    let mut request = Request::new(SubscribeEntriesRequest {});
-    let token =
-        MetadataValue::try_from(token).map_err(|_| Status::invalid_argument("bad token"))?;
-    request.metadata_mut().insert("x-token", token);
-    let mut stream = client.subscribe_entries(request).await?.into_inner();
-
-    while let Some(message) = stream.message().await? {
+    let mut per_slot: BTreeMap<u64, u64> = BTreeMap::new();
+    while let Some(update) = updates.next().await {
+        let update = update?;
         *delay = Duration::from_secs(1);
-        let entries: Vec<Entry> = match wincode::deserialize(&message.entries) {
-            Ok(entries) => entries,
-            Err(error) => {
-                eprintln!("slot {}: could not decode entries: {error}", message.slot);
-                continue;
+        match update.update_oneof {
+            Some(UpdateOneof::Ping(_)) => {
+                let ping = SubscribeDeshredRequest {
+                    ping: Some(SubscribeRequestPing { id: 1 }),
+                    ..Default::default()
+                };
+                sink.send(ping).await.map_err(unavailable)?;
             }
-        };
-        let transactions = entries.iter().flat_map(|entry| &entry.transactions);
-        match program {
-            None => println!(
-                "{} entries={} transactions={}",
-                message.slot,
-                entries.len(),
-                transactions.count()
-            ),
-            Some(program) => {
-                for tx in
-                    transactions.filter(|tx| tx.message.static_account_keys().contains(program))
-                {
-                    print_transaction(message.slot, tx);
+            Some(UpdateOneof::DeshredTransaction(update)) => {
+                let Some(tx) = update.transaction else { continue };
+                if detailed {
+                    print_transaction(update.slot, &tx);
+                } else {
+                    *per_slot.entry(update.slot).or_default() += 1;
+                    while per_slot.len() > 2 {
+                        if let Some((slot, count)) = per_slot.pop_first() {
+                            println!("{slot} transactions={count}");
+                        }
+                    }
                 }
             }
+            _ => {}
         }
     }
     Ok(())
 }
 
-fn print_transaction(slot: u64, tx: &VersionedTransaction) {
-    let keys = tx.message.static_account_keys();
-    let version = match tx.version() {
-        TransactionVersion::Legacy(_) => "legacy".to_string(),
-        TransactionVersion::Number(n) => n.to_string(),
+fn print_transaction(slot: u64, tx: &SubscribeUpdateDeshredTransactionInfo) {
+    let Some(message) = tx.transaction.as_ref().and_then(|t| t.message.as_ref()) else {
+        return;
+    };
+    let key = |i: usize| {
+        message
+            .account_keys
+            .get(i)
+            .map(|k| bs58::encode(k).into_string())
+            .unwrap_or_default()
+    };
+    let version = match (message.versioned, message.config.is_some()) {
+        (false, _) => "legacy",
+        (true, false) => "0",
+        (true, true) => "1",
     };
     println!(
-        "{slot} {} signer={} version={version} lookups={}",
-        tx.signatures[0],
-        keys[0],
-        tx.message.address_table_lookups().map_or(0, <[_]>::len),
+        "{slot} {} signer={} version={version} lookups={} loaded={}",
+        bs58::encode(&tx.signature).into_string(),
+        key(0),
+        message.address_table_lookups.len(),
+        tx.loaded_writable_addresses.len() + tx.loaded_readonly_addresses.len(),
     );
-    for ix in tx.message.instructions() {
+    for ix in &message.instructions {
         println!(
             "  {} accounts={} data={}B",
-            keys[usize::from(ix.program_id_index)],
+            key(ix.program_id_index as usize),
             ix.accounts.len(),
             ix.data.len()
         );

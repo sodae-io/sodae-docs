@@ -11,7 +11,7 @@ Customer documentation for Sodae, built with [Mintlify](https://mintlify.com), p
 | `examples/rust` | Rust clients: `cargo run --example yellowstone` / `preplay` |
 | `examples/typescript` | TypeScript clients: `npm run yellowstone` / `preplay` |
 | `examples/go` | Go clients: `go run ./yellowstone` / `./preplay` |
-| `examples/proto` | `shredstream.proto`, plus `geyser.proto` and `solana-storage.proto` from [yellowstone-grpc](https://github.com/rpcpool/yellowstone-grpc) (Apache-2.0) |
+| `examples/proto` | `geyser.proto` and `solana-storage.proto` from [yellowstone-grpc](https://github.com/rpcpool/yellowstone-grpc) (Apache-2.0) |
 
 ## Preview
 
@@ -33,9 +33,7 @@ protoc -I ../proto \
   --go-grpc_out=. --go-grpc_opt=module=sodae-examples \
   --go_opt=Mgeyser.proto=sodae-examples/proto/geyser \
   --go_opt=Msolana-storage.proto=sodae-examples/proto/geyser \
-  --go_opt=Mshredstream.proto=sodae-examples/proto/shredstream \
   --go-grpc_opt=Mgeyser.proto=sodae-examples/proto/geyser \
   --go-grpc_opt=Msolana-storage.proto=sodae-examples/proto/geyser \
-  --go-grpc_opt=Mshredstream.proto=sodae-examples/proto/shredstream \
-  geyser.proto solana-storage.proto shredstream.proto
+  geyser.proto solana-storage.proto
 ```
