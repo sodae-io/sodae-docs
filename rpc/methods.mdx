@@ -5,7 +5,7 @@ description: "Supported JSON-RPC methods and their credit costs."
 "twitter:image": "https://docs.sodae.io/images/og/solana-rpc.jpg"
 ---
 
-Credit costs matter for trials, which spend from a fixed allowance. Paid plans have no credit limit.
+Credit costs matter for trials and [packages](/pricing#packages), which spend from a credit allowance. RPC plans priced by request rate have no credit limit.
 
 ## Solana methods
 
@@ -15,13 +15,13 @@ Parameters and results follow the [Solana JSON-RPC reference](https://solana.com
 |---|---|
 | `getAccountInfo` | 1 |
 | `getBalance` | 1 |
-| `getBlock` | 10 |
+| `getBlock` | 1 |
 | `getBlockCommitment` | 1 |
 | `getBlockHeight` | 1 |
 | `getBlockProduction` | 1 |
-| `getBlocks` | 10 |
-| `getBlocksWithLimit` | 10 |
-| `getBlockTime` | 10 |
+| `getBlocks` | 1 |
+| `getBlocksWithLimit` | 1 |
+| `getBlockTime` | 1 |
 | `getClusterNodes` | 1 |
 | `getEpochInfo` | 1 |
 | `getEpochSchedule` | 1 |
@@ -33,7 +33,7 @@ Parameters and results follow the [Solana JSON-RPC reference](https://solana.com
 | `getIdentity` | 1 |
 | `getInflationGovernor` | 1 |
 | `getInflationRate` | 1 |
-| `getInflationReward` | 10 |
+| `getInflationReward` | 1 |
 | `getLatestBlockhash` | 1 |
 | `getLeaderSchedule` | 1 |
 | `getMaxRetransmitSlot` | 1 |
@@ -43,17 +43,17 @@ Parameters and results follow the [Solana JSON-RPC reference](https://solana.com
 | `getProgramAccounts` | 10 |
 | `getRecentPerformanceSamples` | 1 |
 | `getRecentPrioritizationFees` | 1 |
-| `getSignaturesForAddress` | 10 |
-| `getSignatureStatuses` | 10 |
+| `getSignaturesForAddress` | 1 |
+| `getSignatureStatuses` | 1 |
 | `getSlot` | 1 |
 | `getSlotLeader` | 1 |
 | `getSlotLeaders` | 1 |
 | `getStakeMinimumDelegation` | 1 |
 | `getTokenAccountBalance` | 1 |
 | `getTokenAccountsByOwner` | 1 |
-| `getTokenLargestAccounts` | 10 |
+| `getTokenLargestAccounts` | 1 |
 | `getTokenSupply` | 1 |
-| `getTransaction` | 10 |
+| `getTransaction` | 1 |
 | `getTransactionCount` | 1 |
 | `getVersion` | 1 |
 | `getVoteAccounts` | 1 |
@@ -63,6 +63,14 @@ Parameters and results follow the [Solana JSON-RPC reference](https://solana.com
 | `simulateTransaction` | 1 |
 
 Not available: `getLargestAccounts`, `getSupply` and `getTokenAccountsByDelegate`.
+
+## Reads
+
+Account, token, program, transaction, block and asset lookups count against your plan's [reads per second](/rpc/overview#rate-limits). These calls don't:
+
+`getBlockCommitment`, `getBlockHeight`, `getEpochInfo`, `getEpochSchedule`, `getFeeForMessage`, `getGenesisHash`, `getHealth`, `getIdentity`, `getLatestBlockhash`, `getMinimumBalanceForRentExemption`, `getRecentPerformanceSamples`, `getRecentPrioritizationFees`, `getSignatureStatuses`, `getSlot`, `getSlotLeader`, `getStakeMinimumDelegation`, `getTransactionCount`, `getVersion`, `isBlockhashValid` and `sendTransaction`.
+
+In a [batch](/rpc/overview#batches), every call except `sendTransaction` counts as a read.
 
 ## Digital Asset Standard
 

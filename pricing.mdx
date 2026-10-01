@@ -5,18 +5,41 @@ description: "Plans, data packs, free trials and payment."
 
 Prices are in US dollars. A month is 30 days. Plans do not renew automatically; buy again before a plan expires to keep access.
 
+## Packages
+
+A package is RPC with Yellowstone gRPC and Preplay Shreds, bought together in one 30-day purchase. Packages sit next to the per-product plans below; they don't replace them.
+
+| | **Developer** | **Business** | **Professional** |
+|---|---|---|---|
+| Price | $49 / 30 days | $500 / 30 days | $1,000 / 30 days |
+| Yellowstone gRPC | 500 GB of [data](#data), used on either | Seat, 1 IP | Seat, 2 IPs |
+| Preplay Shreds | (same 500 GB) | Access, 1 IP | Access, 2 IPs |
+| RPC requests per second | 50 | 200 | 500 |
+| RPC credits | 1,000,000 | 100,000,000 | 250,000,000 |
+| RPC reads per second | 10 | 50 | 100 |
+| `sendTransaction` per second | 5 | 50 | 100 |
+| Support | Discord and Telegram | Priority Telegram | Private Telegram group |
+
+- **Paying.** Packages are paid in USDC or USDT like any plan. They don't need an account balance.
+- **Credits.** Package RPC counts [credits per method](/rpc/methods). The RPC plans priced by request rate have no credit limit, so if you hold both, there is no credit limit.
+- **Reads.** Account, token, program, transaction, block and asset lookups count as [reads](/rpc/methods#reads). The per-second limit applies to your whole account. Calls over it get HTTP `429` with [`READ_RATE_LIMITED`](/errors#rpc).
+- **`sendTransaction`.** The per-second limit applies to your whole account. Calls over it get HTTP `429` with [`SEND_RATE_LIMITED`](/errors#rpc).
+- **IPs.** Business and Professional accept connections only from the IPs you bind to them, as the seat and Binary Decoded Shreds plans do. Developer's data accepts any IP until you bind one.
+- **Renewing.** Buy the same package again before it ends and the new 30 days start where the current ones stop. IPs bound to the package carry over to the new one. A reminder email goes out 3 days before a package ends.
+- **Stacking.** A package adds to your other plans. Allowances add up, and the highest request rate and the highest reads and `sendTransaction` limits apply.
+
 ## RPC
 
-RPC is priced by request rate, from 25 to 1,000 requests per second. Paid plans have no credit limit; the request rate is the only limit.
+RPC is priced by request rate, from 25 to 1,000 requests per second. These plans have no credit limit. A fifth of the request rate, and at least 5 per second, can be [reads](/rpc/methods#reads). Packages include RPC with a credit allowance.
 
-| Requests per second | Price per month |
-|---|---|
-| 25 | $19.08 |
-| 50 | $25.00 |
-| 100 | $36.84 |
-| 250 | $72.37 |
-| 500 | $131.58 |
-| 1,000 | $250.00 |
+| Requests per second | Reads per second | Price per month |
+|---|---|---|
+| 25 | 5 | $19.08 |
+| 50 | 10 | $25.00 |
+| 100 | 20 | $36.84 |
+| 250 | 50 | $72.37 |
+| 500 | 100 | $131.58 |
+| 1,000 | 200 | $250.00 |
 
 The monthly price is \$13.16 plus \$0.2368 per request per second, rounded to the cent.
 
@@ -25,14 +48,24 @@ The monthly price is \$13.16 plus \$0.2368 per request per second, rounded to th
 | Plan | Price | Data | IPs |
 |---|---|---|---|
 | **Shared seat** | $250 / month | No data cap | 1 |
-| **Per GB** (shown as Dedicated) | $0.05 per GB, from 200 GB | What you buy | Any number |
+| **Per GB** (shown as Dedicated) | $0.05 per GB, from 200 GB | What you buy, [also usable on Preplay Shreds](#data) | Any number |
 
 ## Preplay Shreds
 
 | Plan | Price | Data | IPs |
 |---|---|---|---|
 | **Binary Decoded Shreds** | $350 / month | No data cap | 1 |
-| **Per GB** | $0.05 per GB, from 200 GB | What you buy | Any number |
+| **Per GB** | $0.05 per GB, from 200 GB | What you buy, [also usable on Yellowstone gRPC](#data) | Any number |
+
+## Data
+
+Per-GB data works on both Yellowstone gRPC and Preplay Shreds. It costs the same on either product page, and data bought on one streams from both. Your streams are your own; nothing about the connection is shared with other customers.
+
+- **One allowance.** 200 GB lets you stream 120 GB of Yellowstone gRPC and 80 GB of Preplay Shreds, or any other split.
+- **Per-product usage.** Each product page charts what that product streamed. The plan card shows what is left.
+- **One warning.** The usage email at 75% covers the whole allowance.
+- **IPs.** IPs you bind to a data plan apply on both products.
+- **Per product.** Trials, the Yellowstone seat and the Binary Decoded Shreds plan stay with their own product.
 
 ## Price Feeds
 
@@ -49,7 +82,7 @@ Coming soon.
 Per-GB plans and trials meter the bytes streamed to you. Fixed-price plans have no data cap.
 
 - Data packs stack. Buy more at any time and the amounts add up.
-- With several plans for the same product, usage draws from the plan that expires first.
+- With several plans for the same product, including per-GB data and packages, usage draws from the plan that expires first.
 - When an allowance runs out, new streams are refused with [`QUOTA_EXCEEDED`](/errors) and open streams end.
 - Unused data expires with the plan.
 
@@ -77,7 +110,7 @@ Pay in **USDC or USDT on Solana**.
 You can deposit to an account balance and pay from it.
 
 - The first deposit is at least \$80; later top-ups are at least \$1.
-- RPC plans and per-GB data are paid from the balance.
+- RPC plans and per-GB data are paid from the balance. Packages, the seat and the fixed-price plans can be paid either way.
 - If a transfer does not match an order, or pays more than it, the difference is credited to your balance.
 
-If a payment arrives after its quote expired, email [support@sodae.io](mailto:support@sodae.io) with the transaction signature.
+If a payment arrives after its quote expired, email [contact@sodae.io](mailto:contact@sodae.io) with the transaction signature.

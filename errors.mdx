@@ -53,16 +53,20 @@ Errors raised by the RPC service itself use HTTP status codes and a JSON-RPC err
 { "jsonrpc": "2.0", "error": { "code": -401, "message": "Unauthorized. Invalid or expired API key." }, "id": null }
 ```
 
-| HTTP | Code | Message | What to do |
-|---|---|---|---|
-| 401 | `-401` | `Unauthorized. API key required. …` | Send your key |
-| 401 | `-401` | `Unauthorized. Invalid or expired API key.` | Check the key, its access rules and that you have an RPC plan or trial |
-| 402 | `-402` | `The request allowance for the current window has been reached …` | Your trial credits are used up. Buy an RPC plan |
-| 429 | `-429` | `Too Many Requests. Rate limit exceeded for your plan.` | Slow down, or raise your plan's request rate |
-| 429 | `-429` | `Too Many Requests` | Back off and retry |
-| 502 | `-502` | `Bad Gateway` | Retry |
-| 503 | `-503` | `Service Unavailable` | Retry with backoff |
-| 504 | `-504` | `Gateway Timeout` | Retry, or narrow the request |
-| 405 | | `Method not allowed` | Use `POST` |
+The limits your plan sets also return an `x-error-code` header, so a client can tell them apart without reading the message.
+
+| HTTP | Code | `x-error-code` | Message | What to do |
+|---|---|---|---|---|
+| 401 | `-401` | | `Unauthorized. API key required. …` | Send your key |
+| 401 | `-401` | | `Unauthorized. Invalid or expired API key.` | Check the key, its access rules and that you have an RPC plan, package or trial |
+| 402 | `-402` | `QUOTA_EXCEEDED` | `The request allowance for the current window has been reached …` | Your credits are used up. Buy an RPC plan or a package |
+| 429 | `-429` | `RATE_LIMITED` | `Too Many Requests. Rate limit exceeded for your plan.` | Slow down, or raise your plan's request rate |
+| 429 | `-429` | `READ_RATE_LIMITED` | `Too Many Requests. Your plan allows N account and history reads per second.` | Space out your reads, split large batches, or move to a larger plan |
+| 429 | `-429` | `SEND_RATE_LIMITED` | `Too Many Requests. Your plan allows N sendTransaction calls per second.` | Space out your sends, or move to a larger package |
+| 429 | `-429` | | `Too Many Requests` | Back off and retry |
+| 502 | `-502` | | `Bad Gateway` | Retry |
+| 503 | `-503` | | `Service Unavailable` | Retry with backoff |
+| 504 | `-504` | | `Gateway Timeout` | Retry, or narrow the request |
+| 405 | | | `Method not allowed` | Use `POST` |
 
 Errors about the request itself, such as invalid parameters or an unknown method, come back as standard Solana JSON-RPC errors with HTTP 200.

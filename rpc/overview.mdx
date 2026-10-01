@@ -78,17 +78,41 @@ Send a JSON array of requests to get an array of responses:
 ]
 ```
 
+A batch counts as one request against your request rate. Each call in it costs its own [credits](/rpc/methods), each `sendTransaction` in it counts against your `sendTransaction` limit, and every other call counts against your reads per second. A batch with more calls than your reads per second is refused.
+
 ## History
 
 The endpoint serves the full ledger history: `getBlock`, `getTransaction` and `getSignaturesForAddress` reach back to genesis. `getSignatureStatuses` returns statuses for recent transactions; it does not support `searchTransactionHistory`.
 
 ## Rate limits
 
-Your plan sets requests per second; trials allow 5. Requests above the rate get HTTP `429` with JSON-RPC code `-429`. Back off and retry.
+Your plan sets requests per second for your whole account, shared by all your API keys; trials allow 5. Requests above the rate get HTTP `429` with JSON-RPC code `-429` and `x-error-code: RATE_LIMITED`. Back off and retry. A higher rate takes effect as soon as you buy it.
+
+Account, token, program, transaction, block and asset lookups also have a reads-per-second limit across your whole account: 10 on Developer, 50 on Business and 100 on Professional. RPC plans priced by request rate allow a fifth of their request rate as reads, and at least 5. Reads above it get HTTP `429` with `x-error-code: READ_RATE_LIMITED`. [Methods](/rpc/methods#reads) lists the calls that don't count, such as `getLatestBlockhash`, `getSlot` and `getSignatureStatuses`.
+
+[Packages](/pricing#packages) also limit `sendTransaction` calls per second across your whole account: 5 on Developer, 50 on Business and 100 on Professional. Sends above it get HTTP `429` with `x-error-code: SEND_RATE_LIMITED`; other methods are not affected. RPC plans priced by request rate have no separate `sendTransaction` limit.
+
+## Sending transactions
+
+Transactions land most reliably when the client does the following:
+
+- **Skip preflight.** Pass `skipPreflight: true`. To check a transaction first, call `simulateTransaction` separately, then send it. A simulation counts as a read.
+- **Retry in your own code.** Pass `maxRetries: 0` and resend the same signed transaction until it confirms or its blockhash expires. Then fetch a new blockhash, sign again and send.
+- **Use a settled blockhash.** Fetch it with `confirmed` or `finalized` commitment, never `processed`.
+- **Set the compute budget.** Request only the compute units the transaction needs, and always add a priority fee. `getRecentPrioritizationFees` shows recent fees for the accounts you write.
+
+```typescript
+const signature = await connection.sendRawTransaction(tx.serialize(), {
+  skipPreflight: true,
+  maxRetries: 0,
+});
+```
+
+Each resend is a `sendTransaction` call and counts against your `sendTransaction` limit.
 
 ## Credits
 
-Every method has a credit cost, listed in [Methods](/rpc/methods). Trials spend from a fixed credit allowance; when it runs out, requests get HTTP `402`. Paid RPC plans have no credit limit.
+Every method has a credit cost, listed in [Methods](/rpc/methods). Trials and packages spend from a credit allowance; when it runs out, requests get HTTP `402` with `x-error-code: QUOTA_EXCEEDED`. RPC plans priced by request rate have no credit limit.
 
 ## Large responses
 
