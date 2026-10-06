@@ -60,6 +60,10 @@
         "pages": ["price-feeds", "sodastream"]
       },
       {
+        "group": "APIs",
+        "pages": ["program-deploys"]
+      },
+      {
         "group": "Reference",
         "pages": ["errors", "support"]
       }
