@@ -1,0 +1,186 @@
+---
+title: "Program Upgrades API"
+description: "The latest on-chain deploy of every major Solana DEX program, checked every minute, with webhooks when one upgrades."
+---
+
+When a DEX or AMM program is upgraded, its swap math, fees or account layout can change with it. A bot built against the old version keeps sending transactions that now fail or fill worse. The Program Upgrades API tells you when that happens. It reads every watched program's on-chain ProgramData account every minute and can call your webhook the moment a deploy slot changes.
+
+| | |
+|---|---|
+| Base URL | `https://mainnet.sodae.io/api/v1/program-deploys` |
+| Authentication | Any active API key: `x-token` header, `Authorization: Bearer`, or `?api-key=` |
+| Price | Free |
+| Rate limit | 60 requests per minute per key |
+| Freshness | Every program is read once a minute |
+| Coverage | Every DEX, AMM, prop AMM and launchpad program Sodae decodes, about 115 in all |
+
+The same data is on the public tracker at [sodae.io/program-upgrades](https://sodae.io/program-upgrades).
+
+## Get programs
+
+`GET /programs` returns every watched program with its latest deploy.
+
+<CodeGroup>
+
+```bash curl
+curl https://mainnet.sodae.io/api/v1/program-deploys/programs \
+  -H "x-token: $SODAE_TOKEN"
+```
+
+```typescript TypeScript
+const res = await fetch("https://mainnet.sodae.io/api/v1/program-deploys/programs", {
+  headers: { "x-token": process.env.SODAE_TOKEN! },
+});
+const { checked_at, programs } = await res.json();
+```
+
+```python Python
+import os, requests
+
+res = requests.get(
+    "https://mainnet.sodae.io/api/v1/program-deploys/programs",
+    headers={"x-token": os.environ["SODAE_TOKEN"]},
+)
+data = res.json()
+```
+
+</CodeGroup>
+
+To fetch only some programs, pass their addresses as a comma-separated `program_id`:
+
+```bash
+curl "https://mainnet.sodae.io/api/v1/program-deploys/programs?program_id=3TK9D8aoBFYjYZtKCjciPrVrRStsnvo7KmpcJqDavpaU,whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc" \
+  -H "x-token: $SODAE_TOKEN"
+```
+
+### Response
+
+```json
+{
+  "checked_at": "2026-10-06T12:00:04.512Z",
+  "programs": [
+    {
+      "program_id": "3TK9D8aoBFYjYZtKCjciPrVrRStsnvo7KmpcJqDavpaU",
+      "label": "Kipseli",
+      "status": "upgradeable",
+      "upgrade_authority": "<base58 address>",
+      "deploy_slot": 453575392,
+      "deployed_at": "2026-10-05T12:09:41Z"
+    }
+  ]
+}
+```
+
+Programs are ordered by `deploy_slot`, newest first.
+
+| Field | Meaning |
+|---|---|
+| `checked_at` | When the programs were last read from the chain |
+| `program_id` | Program address |
+| `label` | Program name |
+| `status` | See the table below |
+| `upgrade_authority` | Address allowed to upgrade the program, or `null` |
+| `deploy_slot` | Slot of the last deploy, from the ProgramData account. `null` when the program has none |
+| `deployed_at` | Block time of `deploy_slot`. `null` until it has been looked up |
+
+| Status | Meaning |
+|---|---|
+| `upgradeable` | Has an upgrade authority, so it can be redeployed |
+| `frozen` | Upgrade authority removed. It can never change again |
+| `other_loader` | Deployed with a loader that does not support upgrades |
+| `missing` | The program or its ProgramData account no longer exists |
+
+## Webhooks
+
+Set a webhook and Sodae sends a `POST` to your URL whenever a watched program's deploy slot changes.
+
+<Steps>
+  <Step title="Add your URL">
+    In the dashboard, open **APIs → Program Upgrades** and enter an `https` URL that is reachable from the public internet.
+  </Step>
+  <Step title="Store the secret">
+    The signing secret is shown once, when the webhook is created or the secret is rotated. Keep it with your server's other secrets.
+  </Step>
+  <Step title="Send a test">
+    **Send test** delivers a `ping` event. The delivery and your server's response show under **Recent deliveries**.
+  </Step>
+</Steps>
+
+### Events
+
+```json program.upgraded
+{
+  "id": "6f1c2c1e-6c55-4d58-9a5e-2f7f3c3a9b10",
+  "event": "program.upgraded",
+  "created_at": "2026-10-05T12:10:03.204Z",
+  "data": {
+    "program_id": "3TK9D8aoBFYjYZtKCjciPrVrRStsnvo7KmpcJqDavpaU",
+    "label": "Kipseli",
+    "previous_slot": 453484883,
+    "deploy_slot": 453575392,
+    "deployed_at": "2026-10-05T12:09:41Z",
+    "detected_at": "2026-10-05T12:10:03.198Z"
+  }
+}
+```
+
+```json ping
+{
+  "id": "0b9e7a52-1d3f-4b0e-8a61-5c2f6d9e4a77",
+  "event": "ping",
+  "created_at": "2026-10-06T09:15:00.000Z",
+  "data": { "message": "Test delivery from Sodae" }
+}
+```
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `X-Sodae-Event` | `program.upgraded` or `ping` |
+| `X-Sodae-Delivery` | Delivery ID, the same as `id` in the body. Retries reuse it, so use it to drop duplicates |
+| `X-Sodae-Timestamp` | Unix seconds when this attempt was signed |
+| `X-Sodae-Signature` | `sha256=` followed by the hex HMAC-SHA256 of `<timestamp>.<raw body>`, keyed with your secret |
+
+### Verifying the signature
+
+Compute the HMAC over the raw request body, before any JSON parsing, and reject timestamps older than a few minutes.
+
+<CodeGroup>
+
+```typescript TypeScript
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+export function verify(secret: string, timestamp: string, rawBody: string, signature: string) {
+  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
+  const expected =
+    "sha256=" + createHmac("sha256", secret).update(`${timestamp}.${rawBody}`).digest("hex");
+  return signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
+```
+
+```python Python
+import hashlib, hmac, time
+
+def verify(secret: str, timestamp: str, raw_body: bytes, signature: str) -> bool:
+    if abs(time.time() - int(timestamp)) > 300:
+        return False
+    digest = hmac.new(secret.encode(), timestamp.encode() + b"." + raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(signature, f"sha256={digest}")
+```
+
+</CodeGroup>
+
+### Delivery and retries
+
+- Any `2xx` response within 10 seconds counts as delivered. Redirects are not followed.
+- A failed delivery is retried after 30 seconds, 2 minutes, 10 minutes, 30 minutes and 2 hours. That makes 6 attempts in all; after the last, it is marked failed.
+- Queued deliveries and their retries are kept across restarts. A deploy that lands while the watcher itself is restarting is not sent as an event. `/programs` always shows the latest deploy, so if missing one matters, also compare `deploy_slot` from `/programs` on your side.
+
+## Errors
+
+| Status | Body | What to do |
+|---|---|---|
+| `401` | `Missing API key` or `Invalid or inactive API key` | Send an active key. See [Authentication](/authentication) |
+| `429` | `Rate limit exceeded` | Wait for the number of seconds in the `Retry-After` header |
+| `503` | `not available yet` or `Key check unavailable` | Retry with backoff. Shortly after a restart, the first read of the chain is still running |
