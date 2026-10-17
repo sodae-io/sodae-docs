@@ -47,20 +47,21 @@ The monthly price is \$13.16 plus \$0.2368 per request per second, rounded to th
 
 | Plan | Price | Data | IPs |
 |---|---|---|---|
-| **Shared seat** | $250 / month | No data cap | 1 |
-| **Per GB** (shown as Dedicated) | $0.05 per GB, from 200 GB | What you buy, [also usable on Preplay Shreds](#data) | Any number |
+| **Yellowstone gRPC seat** | $250 / month | No data cap | 1 |
+| **Per GB** | $0.05 per GB, from 200 GB | What you buy, never expires, [also usable on Preplay Shreds](#data) | Any number |
 
 ## Preplay Shreds
 
 | Plan | Price | Data | IPs |
 |---|---|---|---|
 | **Binary Decoded Shreds** | $350 / month | No data cap | 1 |
-| **Per GB** | $0.05 per GB, from 200 GB | What you buy, [also usable on Yellowstone gRPC](#data) | Any number |
+| **Per GB** | $0.05 per GB, from 200 GB | What you buy, never expires, [also usable on Yellowstone gRPC](#data) | Any number |
 
 ## Data
 
 Per-GB data works on both Yellowstone gRPC and Preplay Shreds. It costs the same on either product page, and data bought on one streams from both. Your streams are your own; nothing about the connection is shared with other customers.
 
+- **No expiry.** Data you buy stays until you use it.
 - **One allowance.** 200 GB lets you stream 120 GB of Yellowstone gRPC and 80 GB of Preplay Shreds, or any other split.
 - **Per-product usage.** Each product page charts what that product streamed. The plan card shows what is left.
 - **One warning.** The usage email at 75% covers the whole allowance.
@@ -82,9 +83,10 @@ Coming soon.
 Per-GB plans and trials meter the bytes streamed to you. Fixed-price plans have no data cap.
 
 - Data packs stack. Buy more at any time and the amounts add up.
-- With several plans for the same product, including per-GB data and packages, usage draws from the plan that expires first.
-- When an allowance runs out, new streams are refused with [`QUOTA_EXCEEDED`](/errors) and open streams end.
-- Unused data expires with the plan.
+- If you hold an unlimited plan and per-GB data for the same product, the unlimited plan is used and your data waits. Choose which one is used under **Plans** on the product page. While per-GB data is in use, it accepts any IP and every byte counts against it.
+- **Auto-switch** (on by default) moves traffic to your other plan when the one in use ends or its data runs out. With it off, new streams are refused with [`QUOTA_EXCEEDED`](/errors) and open streams end.
+- Among plans of the same kind, usage draws from the one that expires first.
+- Per-GB data never expires. Data inside a package expires with the package.
 
 ## Free trials
 
