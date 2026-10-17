@@ -1,6 +1,6 @@
 ---
 title: "Authentication"
-description: "API keys, how to send them, and which IPs can connect."
+description: "API keys, how to send them, and where they can be used from."
 ---
 
 ## API keys
@@ -68,14 +68,47 @@ Changes apply within about a second. A stream that is open from an IP you remove
 Bind your server's public IP address as seen from the internet, not a private or internal address.
 </Note>
 
-## Key access rules
+## Key restrictions
 
-Each key can carry its own rules under **Access control** on the product page:
+Each key can carry its own rules under **API Keys → Key restrictions**. With no rules, a key works from any IP its plans allow. Rules only narrow a key: they never add access, and your plan IPs always work.
 
-- **Allowed IPs** and **Allowed CIDRs** limit which addresses may use the key.
-- **Allowed Domains** checks the browser's `Origin` (or `Referer`) header, for keys used from web pages.
+| Rule | Checks | Use it for |
+|---|---|---|
+| **Key IPs** | The request's source IPv4 address | Servers with fixed addresses |
+| **Key CIDRs** | Whether the source address is in a range, e.g. `203.0.113.0/24` | A block of servers |
+| **Key domains** | The website the request came from, read from the browser's `Origin` header | RPC called from a web page |
 
-With no rules set, the key works from any IP its plans allow.
+A request must match one rule of each kind the key has. A key with both IP and domain rules accepts only browser requests from a listed site and a listed address. Changes apply within a few seconds.
+
+### Domain rules
+
+When a web page calls another site, the browser adds an `Origin` header naming the page's site, e.g. `https://app.example.com`. If a key has domain rules, RPC accepts a request only when that site matches one of them. A request without `Origin` is checked against its `Referer`.
+
+Enter a hostname only, without `https://`, a port or a path. Matching ignores case, scheme and port.
+
+| Rule | Accepts | Refuses |
+|---|---|---|
+| `app.example.com` | `https://app.example.com`, `http://app.example.com:3000` | `https://example.com`, `https://www.app.example.com` |
+| `*.example.com` | `https://app.example.com`, `https://a.b.example.com` | `https://example.com` |
+
+To accept a domain and its subdomains, add both `example.com` and `*.example.com`.
+
+From a web page, call RPC over HTTPS; browsers block plain `http://` requests from secure pages. RPC answers the browser's CORS preflight, so `fetch` and Solana libraries work directly:
+
+```typescript
+import { Connection } from "@solana/web3.js";
+
+const connection = new Connection("https://ams.rpc.sodae.io/?api-key=<browser key>");
+```
+
+<Warning>
+A domain rule refuses every request that doesn't come from a browser: gRPC and Preplay streams, server-side RPC calls and scripts. Use a separate key for those.
+</Warning>
+
+- **A domain rule doesn't hide the key.** Anyone who opens your page can read a key it contains. The rule stops other websites from using the key, but a script outside a browser can send any `Origin` it likes. Requests on the key count toward your account's rate limits and credits, so regenerate the key if it is abused.
+- **Server keys don't need one.** A key used only from your own servers belongs in server-side config, never in front-end code. Restrict it with Key IPs if the servers have fixed addresses.
+- **IP rules still apply.** Browser requests come from your visitors' own addresses, so a key with Key IPs or Key CIDRs, or an account that still lists account IPs, refuses them. RPC plans, packages and trials don't bind RPC to IPs, so a browser key works on any of them.
+- **Refused requests** get HTTP `401` with `-401` [`Unauthorized. Invalid or expired API key.`](/errors#rpc)
 
 ## Trials and pending plans
 

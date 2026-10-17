@@ -67,6 +67,10 @@ const connection = new Connection("http://ams.rpc.sodae.io:8899", {
 });
 ```
 
+## From a web page
+
+Browsers can call RPC directly at `https://ams.rpc.sodae.io`. Give the page its own key and limit it to your site with a [domain rule](/authentication#domain-rules); never put a server key in front-end code.
+
 ## Batches
 
 Send a JSON array of requests to get an array of responses:

@@ -24,6 +24,10 @@ When a gRPC stream is refused or ended by the service, the response carries:
 | `UPSTREAMS_UNAVAILABLE` | 14 `UNAVAILABLE` | The service is temporarily unavailable | Retry with backoff |
 | `UPSTREAM_ERROR` | 14 `UNAVAILABLE` | The request did not complete | Retry with backoff |
 | `INVALID_CONTENT_TYPE` | 3 `INVALID_ARGUMENT` | The request was not gRPC | Use a gRPC client |
+| `REQUEST_TOO_LARGE` | 3 `INVALID_ARGUMENT` | The subscribe request is larger than the service accepts | Send fewer filters |
+| `NO_REQUEST` | 1 `CANCELLED` | No subscribe request arrived before the stream closed or timed out | Send the subscribe request as soon as the stream opens |
+| `SLOT_NOT_RETAINED` | 11 `OUT_OF_RANGE` | `from_slot` is older than the oldest slot kept for replay | Subscribe from a newer slot, or without `from_slot` |
+| `BAD_UPSTREAM_REQUEST` | 13 `INTERNAL` | The request could not be forwarded | Retry with backoff |
 
 `UNAUTHENTICATED`, `NOT_ENTITLED`, `IP_NOT_ALLOWED` and `QUOTA_EXCEEDED` also end streams that are already open. Revoking a key, a plan expiring, removing an IP or running out of data ends a running stream within about 30 seconds, with the matching code.
 
@@ -67,6 +71,7 @@ The limits your plan sets also return an `x-error-code` header, so a client can 
 | 502 | `-502` | | `Bad Gateway` | Retry |
 | 503 | `-503` | | `Service Unavailable` | Retry with backoff |
 | 504 | `-504` | | `Gateway Timeout` | Retry, or narrow the request |
+| 413 | `-413` | | `Payload Too Large` | Keep the request body at 1 MiB or less, or split the batch |
 | 405 | | | `Method not allowed` | Use `POST` |
 
 Errors about the request itself, such as invalid parameters or an unknown method, come back as standard Solana JSON-RPC errors with HTTP 200.
