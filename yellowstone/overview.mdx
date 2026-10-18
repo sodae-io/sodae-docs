@@ -34,11 +34,31 @@ Yellowstone gRPC is the Geyser streaming interface most Solana tooling already s
 |---|---|---|
 | `accounts` | Account writes | `account` (pubkeys), `owner` (program ids), `filters` (`memcmp`, `datasize`) |
 | `transactions` | Transactions with status meta | `account_include`, `account_exclude`, `account_required`, `vote`, `failed`, `signature` |
+| `transactions_status` | Transaction outcomes (slot, signature, vote flag, index, error) without the transaction body | same as `transactions` |
 | `slots` | Slot status changes | `filter_by_commitment` |
 | `blocks_meta` | Block metadata (blockhash, height, time, counts) | |
+| `blocks` | Whole blocks: the metadata plus the block's transactions, account writes and entries | `account_include`, `include_transactions`, `include_accounts`, `include_entries` |
 | `entry` | Ledger entries | |
 
-Block and transaction-status subscriptions are not available. Use `transactions` together with `blocks_meta` instead.
+### Blocks
+
+A `blocks` filter delivers one `SubscribeUpdateBlock` per slot at the commitment you asked for. `include_transactions` defaults to true; `include_accounts` and `include_entries` default to false. `account_include` keeps only the transactions and account writes that touch the listed addresses, while `executed_transaction_count` and `entries_count` always describe the whole block.
+
+Without `include_accounts` the block arrives the moment its transactions and entries are complete, and `updated_account_count` is 0. With `include_accounts` it arrives once the block's account writes are complete as well, which is usually tens of milliseconds later.
+
+```json
+{
+  "blocks": {
+    "full": {
+      "account_include": [],
+      "include_transactions": true,
+      "include_accounts": false,
+      "include_entries": false
+    }
+  },
+  "commitment": "CONFIRMED"
+}
+```
 
 ### Commitment
 
@@ -76,9 +96,10 @@ The same service answers `GetSlot`, `GetBlockHeight`, `GetLatestBlockhash` and `
 ## Staying connected
 
 - Set the client's maximum decoded message size to at least 64 MB. Large account and transaction updates exceed default limits.
+- For `blocks`, raise the client's HTTP/2 stream and connection windows to at least 16 MB (`initial_stream_window_size` and `initial_connection_window_size` in `yellowstone-grpc-client` and tonic). With the default 64 KB window a 3 MB block takes several milliseconds longer to arrive.
 - Streams can end during maintenance. Reconnect with exponential backoff and resubscribe; the [examples](/yellowstone/examples) do this.
 - Do not retry on `UNAUTHENTICATED`, `NOT_ENTITLED`, `IP_NOT_ALLOWED` or `QUOTA_EXCEEDED`. These need a change on your side. See [Errors](/errors).
 
 ## Metering
 
-Per-GB plans and trials count the bytes streamed to you. Narrow filters use less data: prefer `account_include` or `owner` over broad subscriptions, and skip vote transactions unless you need them.
+Per-GB plans and trials count the bytes streamed to you. Narrow filters use less data: prefer `account_include` or `owner` over broad subscriptions, and skip vote transactions unless you need them. A `blocks` filter with `include_transactions` carries every transaction of every block, about as much data as an unfiltered `transactions` stream.
