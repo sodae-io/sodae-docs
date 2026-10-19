@@ -24,7 +24,7 @@ A package is RPC with Yellowstone gRPC and Preplay Shreds, bought together in on
 - **Credits.** Package RPC counts [credits per method](/rpc/methods). Credits from a package, an RPC plan and [credit packs](#credit-packs) add up.
 - **Reads.** Account, token, program, transaction, block and asset lookups count as [reads](/rpc/methods#reads). The per-second limit applies to your whole account. Calls over it get HTTP `429` with [`READ_RATE_LIMITED`](/errors#rpc).
 - **`sendTransaction`.** The per-second limit applies to your whole account. Calls over it get HTTP `429` with [`SEND_RATE_LIMITED`](/errors#rpc).
-- **IPs.** Business and Professional accept connections only from the IPs you bind to them, as the seat and Binary Decoded Shreds plans do. Developer's data accepts any IP until you bind one.
+- **IPs.** Business and Professional accept Yellowstone gRPC and Preplay Shreds connections only from the IPs you bind to them, as the seat and Binary Decoded Shreds plans do. Developer's data accepts any IP until you bind one. RPC accepts any IP on every package.
 - **Renewing.** Buy the same package again before it ends and the new 30 days start where the current ones stop. IPs bound to the package carry over to the new one. A reminder email goes out 3 days before a package ends.
 - **Stacking.** A package adds to your other plans. Allowances add up, and the highest request rate and the highest reads and `sendTransaction` limits apply.
 
