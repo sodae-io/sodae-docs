@@ -15,13 +15,13 @@ A package is RPC with Yellowstone gRPC and Preplay Shreds, bought together in on
 | Yellowstone gRPC | 500 GB of [data](#data), used on either | Seat, 1 IP | Seat, 2 IPs |
 | Preplay Shreds | (same 500 GB) | Access, 1 IP | Access, 2 IPs |
 | RPC requests per second | 50 | 200 | 500 |
-| RPC credits | 1,000,000 | 100,000,000 | 250,000,000 |
-| RPC reads per second | 10 | 50 | 100 |
-| `sendTransaction` per second | 5 | 50 | 100 |
+| RPC credits | 10,000,000 | 40,000,000 | 100,000,000 |
+| RPC reads per second | 10 | 40 | 100 |
+| `sendTransaction` per second | 12 | 50 | 125 |
 | Support | Discord and Telegram | Priority Telegram | Private Telegram group |
 
 - **Paying.** Packages are paid in USDC or USDT like any plan. They don't need an account balance.
-- **Credits.** Package RPC counts [credits per method](/rpc/methods). The RPC plans priced by request rate have no credit limit, so if you hold both, there is no credit limit.
+- **Credits.** Package RPC counts [credits per method](/rpc/methods). Credits from a package, an RPC plan and [credit packs](#credit-packs) add up.
 - **Reads.** Account, token, program, transaction, block and asset lookups count as [reads](/rpc/methods#reads). The per-second limit applies to your whole account. Calls over it get HTTP `429` with [`READ_RATE_LIMITED`](/errors#rpc).
 - **`sendTransaction`.** The per-second limit applies to your whole account. Calls over it get HTTP `429` with [`SEND_RATE_LIMITED`](/errors#rpc).
 - **IPs.** Business and Professional accept connections only from the IPs you bind to them, as the seat and Binary Decoded Shreds plans do. Developer's data accepts any IP until you bind one.
@@ -30,18 +30,22 @@ A package is RPC with Yellowstone gRPC and Preplay Shreds, bought together in on
 
 ## RPC
 
-RPC is priced by request rate, from 25 to 1,000 requests per second. These plans have no credit limit. A fifth of the request rate, and at least 5 per second, can be [reads](/rpc/methods#reads). Packages include RPC with a credit allowance.
+RPC is priced by request rate, from 25 to 1,000 requests per second. Every plan includes 200,000 credits per request per second each month, spent by [method](/rpc/methods). A fifth of the request rate, and at least 5 per second, can be [reads](/rpc/methods#reads); a quarter can be `sendTransaction`. Packages include RPC on the same terms.
 
-| Requests per second | Reads per second | Price per month |
-|---|---|---|
-| 25 | 5 | $19.08 |
-| 50 | 10 | $25.00 |
-| 100 | 20 | $36.84 |
-| 250 | 50 | $72.37 |
-| 500 | 100 | $131.58 |
-| 1,000 | 200 | $250.00 |
+| Requests per second | Reads per second | `sendTransaction` per second | Credits per month | Price per month |
+|---|---|---|---|---|
+| 25 | 5 | 6 | 5,000,000 | $19.08 |
+| 50 | 10 | 12 | 10,000,000 | $25.00 |
+| 100 | 20 | 25 | 20,000,000 | $36.84 |
+| 250 | 50 | 62 | 50,000,000 | $72.37 |
+| 500 | 100 | 125 | 100,000,000 | $131.58 |
+| 1,000 | 200 | 250 | 200,000,000 | $250.00 |
 
-The monthly price is \$13.16 plus \$0.2368 per request per second, rounded to the cent.
+The monthly price is \$13.16 plus \$0.2368 per request per second, rounded to the cent. Credits a plan leaves unused end with it. When your credits run out, requests get HTTP `402` with [`QUOTA_EXCEEDED`](/errors#rpc) until the plan renews or you add a credit pack.
+
+### Credit packs
+
+Extra credits cost \$2 per million, from 5 million (\$10). They never expire and are spent after your plan's monthly credits. Without an RPC plan, a pack runs at 5 requests per second, 5 reads per second and 1 `sendTransaction` per second.
 
 ## Yellowstone gRPC
 
@@ -97,7 +101,7 @@ Per-GB plans and trials meter the bytes streamed to you. Fixed-price plans have 
 | Preplay Shreds | On request |
 | Price Feeds | On request |
 
-Request a trial with the **Claim** button on the product page. Each request names the server IP the trial is bound to and is reviewed before it starts. RPC trials spend credits per method; see [credit costs](/rpc/methods).
+Request a trial with the **Claim** button on the product page. No IP is needed: a trial accepts any IP until you add one. Each request is reviewed before it starts. RPC trials spend credits per method; see [credit costs](/rpc/methods).
 
 A paid plan for the same product replaces the trial. While the plan is active, the trial's IP and allowance stop counting; bind your server's IP to the paid plan.
 

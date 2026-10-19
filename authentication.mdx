@@ -54,7 +54,7 @@ Plans decide which source IPs can use them.
 |---|---|---|
 | Fixed price (Yellowstone gRPC seat, Binary Decoded Shreds) | 1 | No connections are accepted |
 | Per GB | Any number | Any IP can connect |
-| Trial | 1, the IP in your request | Set when the trial is approved |
+| Trial and sandbox | 1 | Any IP can connect |
 
 Manage IPs under **Plans → Allowed IPs** on each product page:
 
@@ -112,4 +112,4 @@ A domain rule refuses every request that doesn't come from a browser: gRPC and P
 
 ## Trials and pending plans
 
-A trial request asks for the IP it should be bound to. You can change that IP while the request is awaiting approval; after approval, change it on the plan instead.
+A trial request needs no IP. Once approved, the trial accepts any IP until you add one under **Plans → Allowed IPs**.
