@@ -116,7 +116,7 @@ Each resend is a `sendTransaction` call and counts against your `sendTransaction
 
 ## Credits
 
-Every method has a credit cost, listed in [Methods](/rpc/methods). Trials and packages spend from a credit allowance; when it runs out, requests get HTTP `402` with `x-error-code: QUOTA_EXCEEDED`. RPC plans priced by request rate have no credit limit.
+Every method has a credit cost, listed in [Methods](/rpc/methods). RPC plans include 200,000 credits per request per second each month; trials, packages and [credit packs](/pricing#credit-packs) carry their own. When the allowance runs out, requests get HTTP `402` with `x-error-code: QUOTA_EXCEEDED`.
 
 ## Large responses
 
