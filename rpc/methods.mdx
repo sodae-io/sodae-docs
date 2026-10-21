@@ -64,14 +64,6 @@ Parameters and results follow the [Solana JSON-RPC reference](https://solana.com
 
 Not available: `getLargestAccounts`, `getSupply` and `getTokenAccountsByDelegate`.
 
-## Reads
-
-Account, token, program, transaction, block and asset lookups count against your plan's [reads per second](/rpc/overview#rate-limits). These calls don't:
-
-`getBlockCommitment`, `getBlockHeight`, `getEpochInfo`, `getEpochSchedule`, `getFeeForMessage`, `getGenesisHash`, `getHealth`, `getIdentity`, `getLatestBlockhash`, `getMinimumBalanceForRentExemption`, `getRecentPerformanceSamples`, `getRecentPrioritizationFees`, `getSignatureStatuses`, `getSlot`, `getSlotLeader`, `getStakeMinimumDelegation`, `getTransactionCount`, `getVersion`, `isBlockhashValid` and `sendTransaction`.
-
-In a [batch](/rpc/overview#batches), every call except `sendTransaction` counts as a read.
-
 ## Digital Asset Standard
 
 The [Metaplex DAS API](https://developers.metaplex.com/das-api) for NFTs, compressed NFTs and fungible tokens. Parameters are passed as a JSON object.
