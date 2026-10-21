@@ -82,7 +82,7 @@ Send a JSON array of requests to get an array of responses:
 ]
 ```
 
-A batch counts as one request against your request rate. Each call in it costs its own [credits](/rpc/methods), each `sendTransaction` in it counts against your `sendTransaction` limit, and every other call counts against your reads per second. A batch with more calls than your reads per second is refused.
+A batch counts as one request against your request rate. Each call in it costs its own [credits](/rpc/methods), and each `sendTransaction` in it counts against your `sendTransaction` limit.
 
 ## History
 
@@ -91,8 +91,6 @@ The endpoint serves the full ledger history: `getBlock`, `getTransaction` and `g
 ## Rate limits
 
 Your plan sets requests per second for your whole account, shared by all your API keys; trials allow 5. Requests above the rate get HTTP `429` with JSON-RPC code `-429` and `x-error-code: RATE_LIMITED`. Back off and retry. A higher rate takes effect as soon as you buy it.
-
-Account, token, program, transaction, block and asset lookups also have a reads-per-second limit across your whole account: 10 on Developer, 40 on Business and 100 on Professional. RPC plans priced by request rate allow a fifth of their request rate as reads, and at least 5. Reads above it get HTTP `429` with `x-error-code: READ_RATE_LIMITED`. [Methods](/rpc/methods#reads) lists the calls that don't count, such as `getLatestBlockhash`, `getSlot` and `getSignatureStatuses`.
 
 `sendTransaction` calls per second are also limited across your whole account: 12 on Developer, 50 on Business and 125 on Professional, and a quarter of the request rate on RPC plans priced by request rate. Sends above it get HTTP `429` with `x-error-code: SEND_RATE_LIMITED`; other methods are not affected.
 

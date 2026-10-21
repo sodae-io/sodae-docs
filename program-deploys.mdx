@@ -7,7 +7,7 @@ When a DEX or AMM program is upgraded, its swap math, fees or account layout can
 
 | | |
 |---|---|
-| Base URL | `https://mainnet.sodae.io/api/v1/program-deploys` |
+| Base URL | `https://api.sodae.io/api/v1/program-deploys` |
 | Authentication | Any active API key: `x-token` header, `Authorization: Bearer`, or `?api-key=` |
 | Price | Free |
 | Rate limit | 60 requests per minute per key |
@@ -23,12 +23,12 @@ The same data is on the public tracker at [sodae.io/program-upgrades](https://so
 <CodeGroup>
 
 ```bash curl
-curl https://mainnet.sodae.io/api/v1/program-deploys/programs \
+curl https://api.sodae.io/api/v1/program-deploys/programs \
   -H "x-token: $SODAE_TOKEN"
 ```
 
 ```typescript TypeScript
-const res = await fetch("https://mainnet.sodae.io/api/v1/program-deploys/programs", {
+const res = await fetch("https://api.sodae.io/api/v1/program-deploys/programs", {
   headers: { "x-token": process.env.SODAE_TOKEN! },
 });
 const { checked_at, programs } = await res.json();
@@ -38,7 +38,7 @@ const { checked_at, programs } = await res.json();
 import os, requests
 
 res = requests.get(
-    "https://mainnet.sodae.io/api/v1/program-deploys/programs",
+    "https://api.sodae.io/api/v1/program-deploys/programs",
     headers={"x-token": os.environ["SODAE_TOKEN"]},
 )
 data = res.json()
@@ -49,7 +49,7 @@ data = res.json()
 To fetch only some programs, pass their addresses as a comma-separated `program_id`:
 
 ```bash
-curl "https://mainnet.sodae.io/api/v1/program-deploys/programs?program_id=3TK9D8aoBFYjYZtKCjciPrVrRStsnvo7KmpcJqDavpaU,whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc" \
+curl "https://api.sodae.io/api/v1/program-deploys/programs?program_id=3TK9D8aoBFYjYZtKCjciPrVrRStsnvo7KmpcJqDavpaU,whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc" \
   -H "x-token: $SODAE_TOKEN"
 ```
 

@@ -65,7 +65,6 @@ The limits your plan sets also return an `x-error-code` header, so a client can 
 | 401 | `-401` | | `Unauthorized. Invalid or expired API key.` | Check the key, its access rules and that you have an RPC plan, package or trial |
 | 402 | `-402` | `QUOTA_EXCEEDED` | `The request allowance for the current window has been reached …` | Your credits are used up. Add a credit pack, renew the RPC plan or buy a package |
 | 429 | `-429` | `RATE_LIMITED` | `Too Many Requests. Rate limit exceeded for your plan.` | Slow down, or raise your plan's request rate |
-| 429 | `-429` | `READ_RATE_LIMITED` | `Too Many Requests. Your plan allows N account and history reads per second.` | Space out your reads, split large batches, or move to a larger plan |
 | 429 | `-429` | `SEND_RATE_LIMITED` | `Too Many Requests. Your plan allows N sendTransaction calls per second.` | Space out your sends, or move to a larger package |
 | 429 | `-429` | | `Too Many Requests` | Back off and retry |
 | 502 | `-502` | | `Bad Gateway` | Retry |
