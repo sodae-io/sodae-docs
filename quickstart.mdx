@@ -17,30 +17,58 @@ description: "From sign-up to your first stream in five steps."
     Fixed-price plans accept connections only from the IP bound to them. Open **Plans** on the product page and add your server's public IP under **Allowed IPs**. Per-GB plans, trials and the sandbox accept any IP until you add one. See [Authentication](/authentication#plan-ips).
   </Step>
   <Step title="Connect">
-    Send your key with each request.
+    Send your key with each request, over plaintext or TLS. See [Endpoints](/endpoints).
 
-    <CodeGroup>
+    <Tabs>
+      <Tab title="Plaintext">
+        <CodeGroup>
 
-    ```bash RPC
-    curl http://ams.rpc.sodae.io:8899 \
-      -H "x-token: $SODAE_TOKEN" \
-      -H "content-type: application/json" \
-      -d '{"jsonrpc":"2.0","id":1,"method":"getSlot"}'
-    ```
+        ```bash RPC
+        curl http://ams.rpc.sodae.io:8899 \
+          -H "x-token: $SODAE_TOKEN" \
+          -H "content-type: application/json" \
+          -d '{"jsonrpc":"2.0","id":1,"method":"getSlot"}'
+        ```
 
-    ```bash Yellowstone gRPC
-    git clone https://github.com/sodae-io/sodae-docs
-    cd sodae-docs/examples/rust
-    SODAE_TOKEN=... cargo run --example yellowstone -- slots
-    ```
+        ```bash Yellowstone gRPC
+        git clone https://github.com/sodae-io/sodae-docs
+        cd sodae-docs/examples/rust
+        SODAE_TOKEN=... cargo run --example yellowstone -- slots
+        ```
 
-    ```bash Preplay Shreds
-    git clone https://github.com/sodae-io/sodae-docs
-    cd sodae-docs/examples/rust
-    SODAE_TOKEN=... cargo run --example preplay
-    ```
+        ```bash Preplay Shreds
+        git clone https://github.com/sodae-io/sodae-docs
+        cd sodae-docs/examples/rust
+        SODAE_TOKEN=... cargo run --example preplay
+        ```
 
-    </CodeGroup>
+        </CodeGroup>
+      </Tab>
+      <Tab title="TLS">
+        <CodeGroup>
+
+        ```bash RPC
+        curl https://ams.tls.sodae.io:443 \
+          -H "x-token: $SODAE_TOKEN" \
+          -H "content-type: application/json" \
+          -d '{"jsonrpc":"2.0","id":1,"method":"getSlot"}'
+        ```
+
+        ```bash Yellowstone gRPC
+        git clone https://github.com/sodae-io/sodae-docs
+        cd sodae-docs/examples/rust
+        SODAE_YELLOWSTONE_URL=https://ams.tls.sodae.io:443 SODAE_TOKEN=... cargo run --example yellowstone -- slots
+        ```
+
+        ```bash Preplay Shreds
+        git clone https://github.com/sodae-io/sodae-docs
+        cd sodae-docs/examples/rust
+        SODAE_PREPLAY_URL=https://ams.tls.sodae.io:10311 SODAE_TOKEN=... cargo run --example preplay
+        ```
+
+        </CodeGroup>
+      </Tab>
+    </Tabs>
   </Step>
 </Steps>
 

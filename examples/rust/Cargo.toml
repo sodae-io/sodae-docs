@@ -11,6 +11,6 @@ bs58 = "0.5"
 futures = "0.3"
 solana-pubkey = "4"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
-tonic = { version = "0.14", features = ["tls-native-roots"] }
+tonic = { version = "0.14", features = ["tls-native-roots", "tls-ring"] }
 yellowstone-grpc-client = "14"
 yellowstone-grpc-proto = "14"

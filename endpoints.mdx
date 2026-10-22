@@ -5,13 +5,15 @@ description: "Hostnames, ports and protocols."
 
 ## Amsterdam
 
-| Service | URL | Protocol |
-|---|---|---|
-| RPC | `http://ams.rpc.sodae.io:8899` | JSON-RPC 2.0, HTTP `POST` |
-| Yellowstone gRPC | `http://ams.rpc.sodae.io:10201` | gRPC over HTTP/2 |
-| Preplay Shreds | `http://ams.rpc.sodae.io:10301` | gRPC over HTTP/2 |
+| Service | Plaintext | TLS | Protocol |
+|---|---|---|---|
+| RPC | `http://ams.rpc.sodae.io:8899` | `https://ams.tls.sodae.io:443` | JSON-RPC 2.0, HTTP `POST` |
+| Yellowstone gRPC | `http://ams.rpc.sodae.io:10201` | `https://ams.tls.sodae.io:443` | gRPC over HTTP/2 |
+| Preplay Shreds | `http://ams.rpc.sodae.io:10301` | `https://ams.tls.sodae.io:10311` | gRPC over HTTP/2 |
 
-The gRPC ports speak plaintext HTTP/2. Configure your client for an insecure (non-TLS) channel:
+Both serve the same data with the same key. Plaintext has the lowest latency; TLS encrypts your key and traffic in transit and adds a handshake each time a connection opens.
+
+On the plaintext gRPC ports, configure your client for an insecure (non-TLS) channel:
 
 <CodeGroup>
 
@@ -29,6 +31,28 @@ grpc.NewClient("ams.rpc.sodae.io:10201",
 ```
 
 </CodeGroup>
+
+Over TLS, use the `https://` URL and enable TLS:
+
+<CodeGroup>
+
+```rust Rust
+GeyserGrpcClient::build_from_shared("https://ams.tls.sodae.io:443")?
+    .tls_config(ClientTlsConfig::new().with_native_roots())?
+```
+
+```typescript TypeScript
+new Client("https://ams.tls.sodae.io:443", token, {});
+```
+
+```go Go
+grpc.NewClient("ams.tls.sodae.io:443",
+    grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+```
+
+</CodeGroup>
+
+In Rust, tonic 0.14 needs the `tls-ring` feature next to `tls-native-roots`, or the client panics when it opens a TLS connection.
 
 [Price Feeds](/price-feeds) and [SodaStream](/sodastream) deliver to your server rather than through a public endpoint.
 

@@ -19,31 +19,65 @@ git clone https://github.com/sodae-io/sodae-docs
 cd sodae-docs
 ```
 
-<CodeGroup>
+<Tabs>
+  <Tab title="Plaintext">
+    <CodeGroup>
 
-```bash Rust
-cd examples/rust
-export SODAE_TOKEN=your-api-key
-cargo run --example preplay
-cargo run --example preplay -- pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
-```
+    ```bash Rust
+    cd examples/rust
+    export SODAE_TOKEN=your-api-key
+    cargo run --example preplay
+    cargo run --example preplay -- pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    ```
 
-```bash TypeScript
-cd examples/typescript
-npm install
-export SODAE_TOKEN=your-api-key
-npm run preplay
-npm run preplay -- pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
-```
+    ```bash TypeScript
+    cd examples/typescript
+    npm install
+    export SODAE_TOKEN=your-api-key
+    npm run preplay
+    npm run preplay -- pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    ```
 
-```bash Go
-cd examples/go
-export SODAE_TOKEN=your-api-key
-go run ./preplay
-go run ./preplay pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
-```
+    ```bash Go
+    cd examples/go
+    export SODAE_TOKEN=your-api-key
+    go run ./preplay
+    go run ./preplay pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    ```
 
-</CodeGroup>
+    </CodeGroup>
+  </Tab>
+  <Tab title="TLS">
+    <CodeGroup>
+
+    ```bash Rust
+    cd examples/rust
+    export SODAE_TOKEN=your-api-key
+    export SODAE_PREPLAY_URL=https://ams.tls.sodae.io:10311
+    cargo run --example preplay
+    cargo run --example preplay -- pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    ```
+
+    ```bash TypeScript
+    cd examples/typescript
+    npm install
+    export SODAE_TOKEN=your-api-key
+    export SODAE_PREPLAY_URL=https://ams.tls.sodae.io:10311
+    npm run preplay
+    npm run preplay -- pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    ```
+
+    ```bash Go
+    cd examples/go
+    export SODAE_TOKEN=your-api-key
+    export SODAE_PREPLAY_URL=https://ams.tls.sodae.io:10311
+    go run ./preplay
+    go run ./preplay pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    ```
+
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 ## Output
 
@@ -160,6 +194,38 @@ for {
 ```
 
 </CodeGroup>
+
+## Over TLS
+
+Only the connection changes. The examples switch to TLS when the URL starts with `https://`.
+
+<CodeGroup>
+
+```rust Rust
+let mut client = GeyserGrpcClient::build_from_shared("https://ams.tls.sodae.io:10311")?
+    .x_token(Some(token))?
+    .tls_config(ClientTlsConfig::new().with_native_roots())?
+    .max_decoding_message_size(64 * 1024 * 1024)
+    .connect()
+    .await?;
+```
+
+```typescript TypeScript
+const client = new Client("https://ams.tls.sodae.io:10311", token, {
+  grpcMaxDecodingMessageSize: 64 * 1024 * 1024,
+});
+await client.connect();
+```
+
+```go Go
+conn, err := grpc.NewClient("ams.tls.sodae.io:10311",
+    grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})),
+    grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(64<<20)))
+```
+
+</CodeGroup>
+
+In your own Rust project, enable tonic's `tls-ring` feature next to `tls-native-roots`.
 
 The complete programs:
 
