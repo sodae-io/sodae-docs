@@ -12,54 +12,101 @@ description: "Solana JSON-RPC with full history and the Digital Asset Standard A
 | | |
 |---|---|
 | Endpoint | `http://ams.rpc.sodae.io:8899` |
+| TLS endpoint | `https://ams.tls.sodae.io:443` |
 | Protocol | JSON-RPC 2.0 over HTTP `POST` |
 | Authentication | `x-token` header, `Authorization: Bearer`, or `?api-key=` |
 | Plans | [Priced by request rate](/pricing#rpc) |
 
 ## Make a request
 
-<CodeGroup>
+<Tabs>
+  <Tab title="Plaintext">
+    <CodeGroup>
 
-```bash curl
-curl http://ams.rpc.sodae.io:8899 \
-  -H "x-token: $SODAE_TOKEN" \
-  -H "content-type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}'
-```
+    ```bash curl
+    curl http://ams.rpc.sodae.io:8899 \
+      -H "x-token: $SODAE_TOKEN" \
+      -H "content-type: application/json" \
+      -d '{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}'
+    ```
 
-```typescript TypeScript
-const response = await fetch("http://ams.rpc.sodae.io:8899", {
-  method: "POST",
-  headers: { "content-type": "application/json", "x-token": process.env.SODAE_TOKEN! },
-  body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getLatestBlockhash" }),
-});
-console.log(await response.json());
-```
+    ```typescript TypeScript
+    const response = await fetch("http://ams.rpc.sodae.io:8899", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-token": process.env.SODAE_TOKEN! },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getLatestBlockhash" }),
+    });
+    console.log(await response.json());
+    ```
 
-```rust Rust
-let response: serde_json::Value = reqwest::Client::new()
-    .post("http://ams.rpc.sodae.io:8899")
-    .header("x-token", token)
-    .json(&serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "getLatestBlockhash"}))
-    .send()
-    .await?
-    .json()
-    .await?;
-```
+    ```rust Rust
+    let response: serde_json::Value = reqwest::Client::new()
+        .post("http://ams.rpc.sodae.io:8899")
+        .header("x-token", token)
+        .json(&serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "getLatestBlockhash"}))
+        .send()
+        .await?
+        .json()
+        .await?;
+    ```
 
-```go Go
-body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}`)
-request, _ := http.NewRequest("POST", "http://ams.rpc.sodae.io:8899", body)
-request.Header.Set("content-type", "application/json")
-request.Header.Set("x-token", token)
-response, err := http.DefaultClient.Do(request)
-```
+    ```go Go
+    body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}`)
+    request, _ := http.NewRequest("POST", "http://ams.rpc.sodae.io:8899", body)
+    request.Header.Set("content-type", "application/json")
+    request.Header.Set("x-token", token)
+    response, err := http.DefaultClient.Do(request)
+    ```
 
-</CodeGroup>
+    </CodeGroup>
+  </Tab>
+  <Tab title="TLS">
+    <CodeGroup>
+
+    ```bash curl
+    curl https://ams.tls.sodae.io:443 \
+      -H "x-token: $SODAE_TOKEN" \
+      -H "content-type: application/json" \
+      -d '{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}'
+    ```
+
+    ```typescript TypeScript
+    const response = await fetch("https://ams.tls.sodae.io:443", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-token": process.env.SODAE_TOKEN! },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getLatestBlockhash" }),
+    });
+    console.log(await response.json());
+    ```
+
+    ```rust Rust
+    let response: serde_json::Value = reqwest::Client::new()
+        .post("https://ams.tls.sodae.io:443")
+        .header("x-token", token)
+        .json(&serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "getLatestBlockhash"}))
+        .send()
+        .await?
+        .json()
+        .await?;
+    ```
+
+    ```go Go
+    body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"getLatestBlockhash"}`)
+    request, _ := http.NewRequest("POST", "https://ams.tls.sodae.io:443", body)
+    request.Header.Set("content-type", "application/json")
+    request.Header.Set("x-token", token)
+    response, err := http.DefaultClient.Do(request)
+    ```
+
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 Standard Solana SDKs work unchanged. Pass the URL with `?api-key=` appended, or set the `x-token` header if the SDK lets you add headers:
 
-```typescript
+<CodeGroup>
+
+```typescript Plaintext
 import { Connection } from "@solana/web3.js";
 
 const connection = new Connection("http://ams.rpc.sodae.io:8899", {
@@ -67,9 +114,19 @@ const connection = new Connection("http://ams.rpc.sodae.io:8899", {
 });
 ```
 
+```typescript TLS
+import { Connection } from "@solana/web3.js";
+
+const connection = new Connection("https://ams.tls.sodae.io:443", {
+  httpHeaders: { "x-token": process.env.SODAE_TOKEN! },
+});
+```
+
+</CodeGroup>
+
 ## From a web page
 
-Browsers can call RPC directly at `https://ams.rpc.sodae.io`. Give the page its own key and limit it to your site with a [domain rule](/authentication#domain-rules); never put a server key in front-end code.
+Browsers can call RPC directly at `https://ams.tls.sodae.io`. Give the page its own key and limit it to your site with a [domain rule](/authentication#domain-rules); never put a server key in front-end code.
 
 ## Batches
 

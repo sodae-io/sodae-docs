@@ -22,34 +22,71 @@ git clone https://github.com/sodae-io/sodae-docs
 cd sodae-docs
 ```
 
-<CodeGroup>
+<Tabs>
+  <Tab title="Plaintext">
+    <CodeGroup>
 
-```bash Rust
-cd examples/rust
-export SODAE_TOKEN=your-api-key
-cargo run --example yellowstone -- transactions
-cargo run --example yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
-cargo run --example yellowstone -- slots
-```
+    ```bash Rust
+    cd examples/rust
+    export SODAE_TOKEN=your-api-key
+    cargo run --example yellowstone -- transactions
+    cargo run --example yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
+    cargo run --example yellowstone -- slots
+    ```
 
-```bash TypeScript
-cd examples/typescript
-npm install
-export SODAE_TOKEN=your-api-key
-npm run yellowstone -- transactions
-npm run yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
-npm run yellowstone -- slots
-```
+    ```bash TypeScript
+    cd examples/typescript
+    npm install
+    export SODAE_TOKEN=your-api-key
+    npm run yellowstone -- transactions
+    npm run yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
+    npm run yellowstone -- slots
+    ```
 
-```bash Go
-cd examples/go
-export SODAE_TOKEN=your-api-key
-go run ./yellowstone transactions
-go run ./yellowstone accounts SysvarC1ock11111111111111111111111111111111
-go run ./yellowstone slots
-```
+    ```bash Go
+    cd examples/go
+    export SODAE_TOKEN=your-api-key
+    go run ./yellowstone transactions
+    go run ./yellowstone accounts SysvarC1ock11111111111111111111111111111111
+    go run ./yellowstone slots
+    ```
 
-</CodeGroup>
+    </CodeGroup>
+  </Tab>
+  <Tab title="TLS">
+    <CodeGroup>
+
+    ```bash Rust
+    cd examples/rust
+    export SODAE_TOKEN=your-api-key
+    export SODAE_YELLOWSTONE_URL=https://ams.tls.sodae.io:443
+    cargo run --example yellowstone -- transactions
+    cargo run --example yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
+    cargo run --example yellowstone -- slots
+    ```
+
+    ```bash TypeScript
+    cd examples/typescript
+    npm install
+    export SODAE_TOKEN=your-api-key
+    export SODAE_YELLOWSTONE_URL=https://ams.tls.sodae.io:443
+    npm run yellowstone -- transactions
+    npm run yellowstone -- accounts SysvarC1ock11111111111111111111111111111111
+    npm run yellowstone -- slots
+    ```
+
+    ```bash Go
+    cd examples/go
+    export SODAE_TOKEN=your-api-key
+    export SODAE_YELLOWSTONE_URL=https://ams.tls.sodae.io:443
+    go run ./yellowstone transactions
+    go run ./yellowstone accounts SysvarC1ock11111111111111111111111111111111
+    go run ./yellowstone slots
+    ```
+
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 Requirements: Rust 1.89 or later, Node.js 20.18 or later, Go 1.25 or later.
 
@@ -169,6 +206,36 @@ for {
 ```
 
 </CodeGroup>
+
+## Over TLS
+
+Only the connection changes. The examples switch to TLS when the URL starts with `https://`.
+
+<CodeGroup>
+
+```rust Rust
+let mut client = GeyserGrpcClient::build_from_shared("https://ams.tls.sodae.io:443")?
+    .x_token(Some(token))?
+    .tls_config(ClientTlsConfig::new().with_native_roots())?
+    .max_decoding_message_size(64 * 1024 * 1024)
+    .connect()
+    .await?;
+```
+
+```typescript TypeScript
+const client = new Client("https://ams.tls.sodae.io:443", token, { grpcMaxDecodingMessageSize: 64 * 1024 * 1024 });
+await client.connect();
+```
+
+```go Go
+conn, err := grpc.NewClient("ams.tls.sodae.io:443",
+    grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})),
+    grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(64<<20)))
+```
+
+</CodeGroup>
+
+In your own Rust project, enable tonic's `tls-ring` feature next to `tls-native-roots`.
 
 The complete programs, with reconnects and error handling:
 

@@ -40,7 +40,7 @@ Manage keys under **API Keys** in the dashboard:
     |---|---|
     | `x-token` header | `x-token: <key>` |
     | Bearer token | `Authorization: Bearer <key>` |
-    | Query parameter | `http://ams.rpc.sodae.io:8899/?api-key=<key>` |
+    | Query parameter | `http://ams.rpc.sodae.io:8899/?api-key=<key>` or `https://ams.tls.sodae.io:443/?api-key=<key>` |
 
     The dashboard shows endpoint URLs with `?api-key=` already appended. Prefer a header in production so the key stays out of logs and proxies.
   </Tab>
@@ -99,7 +99,7 @@ From a web page, call RPC over HTTPS; browsers block plain `http://` requests fr
 ```typescript
 import { Connection } from "@solana/web3.js";
 
-const connection = new Connection("https://ams.rpc.sodae.io/?api-key=<browser key>");
+const connection = new Connection("https://ams.tls.sodae.io/?api-key=<browser key>");
 ```
 
 <Warning>

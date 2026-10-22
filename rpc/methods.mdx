@@ -83,9 +83,20 @@ The [Metaplex DAS API](https://developers.metaplex.com/das-api) for NFTs, compre
 | `getTokenAccounts` | 10 |
 | `searchAssets` | 10 |
 
-```bash
+<CodeGroup>
+
+```bash Plaintext
 curl http://ams.rpc.sodae.io:8899 \
   -H "x-token: $SODAE_TOKEN" \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"getAsset","params":{"id":"JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"}}'
 ```
+
+```bash TLS
+curl https://ams.tls.sodae.io:443 \
+  -H "x-token: $SODAE_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getAsset","params":{"id":"JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"}}'
+```
+
+</CodeGroup>
