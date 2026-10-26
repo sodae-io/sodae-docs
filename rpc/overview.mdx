@@ -141,6 +141,8 @@ Send a JSON array of requests to get an array of responses:
 
 A batch counts as one request against your request rate. Each call in it costs its own [credits](/rpc/methods), and each `sendTransaction` in it counts against your `sendTransaction` limit.
 
+Each call in a batch is answered on its own. If one call cannot be served, its entry carries the error with its `id`, the other calls still return their results, and the failed call costs no credits.
+
 ## History
 
 The endpoint serves the full ledger history: `getBlock`, `getTransaction` and `getSignaturesForAddress` reach back to genesis. `getSignatureStatuses` returns statuses for recent transactions; it does not support `searchTransactionHistory`.

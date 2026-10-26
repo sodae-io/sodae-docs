@@ -68,7 +68,7 @@ The limits your plan sets also return an `x-error-code` header, so a client can 
 | 429 | `-429` | `SEND_RATE_LIMITED` | `Too Many Requests. Your plan allows N sendTransaction calls per second.` | Space out your sends, or move to a larger package |
 | 429 | `-429` | | `Too Many Requests` | Back off and retry |
 | 502 | `-502` | | `Bad Gateway` | Retry |
-| 503 | `-503` | | `Service Unavailable` | Retry with backoff |
+| 503 | `-503` | `NO_CAPACITY` | `No capacity is free to serve this request right now. …` | Retry after the `Retry-After` delay. Not your plan limit |
 | 504 | `-504` | | `Gateway Timeout` | Retry, or narrow the request |
 | 413 | `-413` | | `Payload Too Large` | Keep the request body at 1 MiB or less, or split the batch |
 | 405 | | | `Method not allowed` | Use `POST` |
