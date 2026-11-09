@@ -10,6 +10,7 @@ description: "Hostnames, ports and protocols."
 | RPC | `http://ams.rpc.sodae.io:8899` | `https://ams.tls.sodae.io:443` | JSON-RPC 2.0, HTTP `POST` |
 | Yellowstone gRPC | `http://ams.rpc.sodae.io:10201` | `https://ams.tls.sodae.io:443` | gRPC over HTTP/2 |
 | Preplay Shreds | `http://ams.rpc.sodae.io:10301` | `https://ams.tls.sodae.io:10311` | gRPC over HTTP/2 |
+| Price Feeds | `http://ams.feeds.sodae.io:10401` | `https://ams.feeds.sodae.io:443` | gRPC over HTTP/2 |
 
 Both serve the same data with the same key. Plaintext has the lowest latency; TLS encrypts your key and traffic in transit and adds a handshake each time a connection opens.
 
@@ -54,7 +55,7 @@ grpc.NewClient("ams.tls.sodae.io:443",
 
 In Rust, tonic 0.14 needs the `tls-ring` feature next to `tls-native-roots`, or the client panics when it opens a TLS connection.
 
-[Price Feeds](/price-feeds) and [SodaStream](/sodastream) deliver to your server rather than through a public endpoint.
+[SodaStream](/sodastream) delivers to your server rather than through a public endpoint.
 
 ## Choosing a location
 
@@ -62,4 +63,4 @@ Place your servers in or near Amsterdam for the lowest latency. The endpoints ar
 
 ## WebSocket
 
-RPC does not offer WebSocket subscriptions. For real-time data, use [Yellowstone gRPC](/yellowstone/overview), which covers account, transaction and slot updates with server-side filtering.
+RPC does not offer WebSocket subscriptions. For real-time data, use [Yellowstone gRPC](/yellowstone/overview), which covers account, transaction and slot updates with server-side filtering. For live prices, use the [Price Feeds](/price-feeds) gRPC streams.
